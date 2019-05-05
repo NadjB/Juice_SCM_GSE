@@ -3,6 +3,7 @@ from setuptools import setup
 requirements = [
     # TODO: put your package requirements here
     'PySide2',
+    'hg+https://hephaistos.lpp.polytechnique.fr/rhodecode/HG_REPOSITORIES/LPP/INSTRUMENTATION/lppinstru'
 ]
 
 setup(
