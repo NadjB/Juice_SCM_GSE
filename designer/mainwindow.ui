@@ -14,8 +14,8 @@
    <string>Juice_SCM_GSE</string>
   </property>
   <property name="windowIcon">
-   <iconset>
-    <normaloff>:/res/designer/icons/01_Warning_48x48.png</normaloff>:/res/designer/icons/01_Warning_48x48.png</iconset>
+   <iconset resource="resources.qrc">
+    <normaloff>:/icons/icon</normaloff>:/icons/icon</iconset>
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout"/>
@@ -33,7 +33,7 @@
   <widget class="QStatusBar" name="statusbar"/>
   <action name="actionSave">
    <property name="icon">
-    <iconset resource="resources.qrc">
+    <iconset>
      <normaloff>:/res/icons/04_Save_48x48.png</normaloff>:/res/icons/04_Save_48x48.png</iconset>
    </property>
    <property name="text">
@@ -42,7 +42,7 @@
   </action>
   <action name="actionQuit">
    <property name="icon">
-    <iconset resource="resources.qrc">
+    <iconset>
      <normaloff>:/res/icons/14_Delete_48x48.png</normaloff>:/res/icons/14_Delete_48x48.png</iconset>
    </property>
    <property name="text">
@@ -51,7 +51,7 @@
   </action>
   <action name="actionCopy">
    <property name="icon">
-    <iconset resource="resources.qrc">
+    <iconset>
      <normaloff>:/res/icons/16_Copy_48x48.png</normaloff>:/res/icons/16_Copy_48x48.png</iconset>
    </property>
    <property name="text">
@@ -60,7 +60,7 @@
   </action>
   <action name="actionAbout">
    <property name="icon">
-    <iconset resource="resources.qrc">
+    <iconset>
      <normaloff>:/res/icons/15_Tick_48x48.png</normaloff>:/res/icons/15_Tick_48x48.png</iconset>
    </property>
    <property name="text">

@@ -1,4 +1,5 @@
 <RCC>
-  <qresource prefix="res">
+  <qresource prefix="icons">
+    <file alias="icon">icons/JUICE_mission_logo_625.jpg</file>
   </qresource>
 </RCC>
