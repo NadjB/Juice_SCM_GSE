@@ -28,11 +28,11 @@ namespace INA226
     PowerDown              = 0,
     ShuntVoltageTrig       = 1,
     BusVoltageTrig         = 2,
-    BothVoltageTrig        = 3,
+    BothTrig               = 3,
     PowerDown1             = 4,
     ShuntVoltageContinuous = 5,
     BusVoltageContinuous   = 6,
-    BothVoltageContinuous  = 7
+    BothContinuous         = 7
   };
 
   enum class ConvTime : uint16_t
@@ -102,7 +102,8 @@ public:
   uint16_t milliVolts(const uint8_t deviceAddress) const
 
   {
-    auto voltageReg = static_cast<uint32_t>(readWord(deviceAddress, INA226_BUS_VOLTAGE_REGISTER));
+    auto voltageReg = static_cast<uint32_t>(
+        readWord(deviceAddress, INA226_BUS_VOLTAGE_REGISTER));
     return static_cast<uint16_t>((voltageReg * 125) / 100);
   }
 

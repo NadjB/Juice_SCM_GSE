@@ -1,4 +1,5 @@
 #include "ina226.h"
+#include "ltc2983.h"
 
 #include <Arduino.h>
 #include <ArduinoSTL.h>
@@ -28,7 +29,7 @@ void setup()
   delay(1000);
   for(auto ina : {INA_CHX, INA_CHY, INA_CHZ})
   {
-    currentMonitor.setup(ina, INA226::OperatingMode::BothVoltageContinuous,
+    currentMonitor.setup(ina, INA226::OperatingMode::BothContinuous,
                          INA226::ConvTime::cnv_140us,
                          INA226::ConvTime::cnv_140us, INA226::AvgNum::avg_16);
   }
