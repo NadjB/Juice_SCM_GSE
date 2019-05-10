@@ -1,4 +1,3 @@
-#include <ArduinoSTL.h>
 #include <stdint.h>
 #include <vector>
 
@@ -175,16 +174,22 @@ template<typename SPIDev_t> class Ltc2983
 public:
   Ltc2983(const SPIDev_t&& spi) : _spi{spi} {}
   inline void setup() { _spi.setup(); }
-  inline uint8_t satus() { return readMem<uint8_t>(static_cast<uint16_t>(0)); }
+  inline uint8_t status() { return readMem<uint8_t>(static_cast<uint16_t>(0)); }
 
   inline void start_Conv(const LTC2983::Channel channel) const
   {
     writMem(0, static_cast<uint8_t>(0x80 | static_cast<uint8_t>(channel)));
   }
 
-  inline uint32_t adc_result(const LTC2983::Channel channel) const
+  inline uint32_t adc_raw_result(const LTC2983::Channel channel) const
   {
     return readMem<uint32_t>(_chan_data_addr(channel));
+  }
+
+  inline double temperature(const LTC2983::Channel channel) const
+  {
+    auto raw = static_cast<int32_t>(adc_raw_result(channel))<<8;
+    return static_cast<double>(raw>>8)/1024.;
   }
 
   inline void configure_RTD(
@@ -205,28 +210,6 @@ public:
                      << 27 |
                  ((rsense_milli_ohms * 1000) / 1024);
     writMem(_chan_cfg_addr(rsense), config_reg);
-    std::cout << "CH" << static_cast<int>(channel)
-              << " config = " << std::showbase << std::hex
-              << static_cast<uint16_t>(readMem<uint8_t>(_chan_cfg_addr(channel))) << " "
-              << std::showbase << std::hex
-              << static_cast<uint16_t>(readMem<uint8_t>(_chan_cfg_addr(channel)+1)) << " "
-              << std::showbase << std::hex
-              << static_cast<uint16_t>(readMem<uint8_t>(_chan_cfg_addr(channel)+2)) << " "
-              << std::showbase << std::hex
-              << static_cast<uint16_t>(readMem<uint8_t>(_chan_cfg_addr(channel)+3))
-              << std::endl;
-
-
-    std::cout << "CH -RSENSE" << static_cast<int>(rsense)
-              << " config = " << std::showbase << std::hex
-              << static_cast<uint16_t>(readMem<uint8_t>(_chan_cfg_addr(rsense))) << " "
-              << std::showbase << std::hex
-              << static_cast<uint16_t>(readMem<uint8_t>(_chan_cfg_addr(rsense)+1)) << " "
-              << std::showbase << std::hex
-              << static_cast<uint16_t>(readMem<uint8_t>(_chan_cfg_addr(rsense)+2)) << " "
-              << std::showbase << std::hex
-              << static_cast<uint16_t>(readMem<uint8_t>(_chan_cfg_addr(rsense)+3))
-              << std::endl;
   }
 
   inline void
