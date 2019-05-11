@@ -4,7 +4,7 @@ import zmq
 
 def setup_ipc(port=9990):
     context = zmq.Context()
-    sock = context.socket(zmq.PAIR)
+    sock = context.socket(zmq.PUB)
     sock.bind(f"tcp://*:{port}")
     return sock
 
@@ -30,5 +30,13 @@ if __name__ == '__main__':
             reset_and_flush(ser)
             out.write(ser.readline().decode()) # comment line
             out.write(ser.readline().decode()) # header columns names
+            last_publish = time.time()
             while True:
-                out.write(str(datetime.datetime.now()) + '\t' + ser.readline().decode())
+                line = ser.readline().decode()
+                out.write(str(datetime.datetime.now()) + '\t' + line)
+                now = time.time()
+                if (now - last_publish) >= 1.:
+                    last_publish = now
+                    values = line.split('\t')
+                    tempA,tempB,tempC = float(values[-4]),float(values[-3]),float(values[-2])
+                    socket.send(f"Temperatures {now},{tempA},{tempB},{tempC}".encode())
