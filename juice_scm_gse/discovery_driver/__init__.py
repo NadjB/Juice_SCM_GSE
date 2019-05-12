@@ -3,30 +3,27 @@ import json
 from lppinstru.discovery import Discovery, c_int
 import time, datetime
 import zmq
+import functools
+
+commands = {}
 
 
-def turn_psu(on_off, channel):
-    return json.dumps({
-        "CMD": on_off,
-        "channel": channel
-    })
+class DiscoCommand:
+    def __init__(self,func):
+        functools.update_wrapper(self, func)
+        self.func = func
+        commands[func.__name__] = func
 
+    def make_cmd(self, channel, **kwargs):
+        payload =  {
+            "CMD": self.func.__name__,
+            "channel": channel
+        }
+        payload.update(kwargs)
+        return json.dumps(payload)
 
-def turn_on_psu(channel):
-    return turn_psu("ON", channel)
-
-
-def turn_off_psu(channel):
-    return turn_psu("OFF", channel)
-
-
-def process_cmd(cmd_dict, disco):
-    cmd = cmd_dict["CMD"]
-    if cmd == "ON":
-        disco.turn_on()
-        return "success"
-    else:
-        return "unknown command"
+    def __call__(self, *args, **kwargs):
+        return self.func(*args, **kwargs)
 
 
 class Disco_Driver(Discovery):
@@ -41,6 +38,50 @@ class Disco_Driver(Discovery):
         self.digital_io = 0
 
 
+@DiscoCommand
+def do_psd(channel, snapshots_count=10):
+
+    time.sleep(3.)
+
+
+@DiscoCommand
+def do_dynamic_tf(channel):
+    time.sleep(3.)
+
+
+@DiscoCommand
+def do_static_tf(channel):
+    time.sleep(3.)
+
+
+@DiscoCommand
+def turn_on_psu(disco:Disco_Driver):
+    disco.turn_on()
+
+
+@DiscoCommand
+def turn_off_psu(disco:Disco_Driver):
+    disco.turn_off()
+
+
+@DiscoCommand
+def do_measurements(disco):
+    for measurement in [do_psd, do_dynamic_tf, do_static_tf]:
+        turn_on_psu(disco)
+        measurement(disco)
+        turn_off_psu(disco)
+        time.sleep(5.)
+
+
+def process_cmd(cmd_dict, discos):
+    cmd = cmd_dict["CMD"]
+    try:
+        commands[cmd](discos[cmd_dict["channel"]])
+        return "success"
+    except:
+        return "unknown command"
+
+
 def setup_ipc(push_port=9992, pull_port=9991):
     context = zmq.Context()
     push_sock = context.socket(zmq.PUSH)
@@ -50,14 +91,20 @@ def setup_ipc(push_port=9992, pull_port=9991):
     return push_sock, pull_sock
 
 
-def parse_cmd(cmd, disco):
-    cmd["result"] = process_cmd(cmd, disco)
+def parse_cmd(cmd, discos):
+    cmd["result"] = process_cmd(cmd, discos)
     return json.dumps(cmd)
 
 
-if __name__ == '__main__':
+def main():
     disco = Disco_Driver()
+    discos = {
+        "CHX": disco, "CHY": disco, "CHZ": disco
+    }
     push_sock, pull_sock = setup_ipc()
     while True:
         cmd = json.loads(pull_sock.recv_json())
-        push_sock.send_json(parse_cmd(cmd, disco))
+        push_sock.send_json(parse_cmd(cmd, discos))
+
+if __name__ == '__main__':
+    main()

@@ -75,12 +75,15 @@ void setup()
   {
     ltc2983.configure_RTD(ch, LTC2983::SensorType::PT_1000,
                           LTC2983::Channel::CH2,
-                          LTC2983::ExcitationCurrent::Cur500uA, 3333000,
+                          LTC2983::ExcitationCurrent::Cur250uA, 3433333,
                           LTC2983::MeasurementMode::TwoWires,
-                          LTC2983::ExcitationMode::GroundInternal);
+                          LTC2983::ExcitationMode::GroundInternal,
+                          LTC2983::RTDCurve::EuropeanStandard);
+    delay(10);
   }
   ltc2983.configure_MultipleConv(
       {LTC2983::Channel::CH4, LTC2983::Channel::CH6, LTC2983::Channel::CH8});
+  delay(200);
   ltc2983.start_Conv(LTC2983::Channel::Multiple);
   std::cout << "# Found " << 3 << " ina226" << std::endl;
   std::cout << "V_BIAS_LNA_CHX\t"

@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>800</width>
-    <height>600</height>
+    <width>1269</width>
+    <height>720</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -25,13 +25,6 @@
        <string>Temperatures</string>
       </property>
       <layout class="QGridLayout" name="gridLayout_2">
-       <item row="0" column="1">
-        <widget class="QLCDNumber" name="tempA_LCD">
-         <property name="smallDecimalPoint">
-          <bool>false</bool>
-         </property>
-        </widget>
-       </item>
        <item row="1" column="0">
         <widget class="QLabel" name="label_2">
          <property name="font">
@@ -46,22 +39,15 @@
          </property>
         </widget>
        </item>
-       <item row="0" column="0">
-        <widget class="QLabel" name="label">
-         <property name="font">
-          <font>
-           <pointsize>20</pointsize>
-           <weight>75</weight>
-           <bold>true</bold>
-          </font>
+       <item row="0" column="1">
+        <widget class="QLCDNumber" name="tempA_LCD">
+         <property name="frameShape">
+          <enum>QFrame::NoFrame</enum>
          </property>
-         <property name="text">
-          <string>Temperature A</string>
+         <property name="smallDecimalPoint">
+          <bool>false</bool>
          </property>
         </widget>
-       </item>
-       <item row="1" column="1">
-        <widget class="QLCDNumber" name="tempB_LCD"/>
        </item>
        <item row="2" column="0">
         <widget class="QLabel" name="label_3">
@@ -78,7 +64,25 @@
         </widget>
        </item>
        <item row="2" column="1">
-        <widget class="QLCDNumber" name="tempC_LCD"/>
+        <widget class="QLCDNumber" name="tempC_LCD">
+         <property name="frameShape">
+          <enum>QFrame::NoFrame</enum>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="2">
+        <widget class="QLabel" name="label_6">
+         <property name="font">
+          <font>
+           <pointsize>34</pointsize>
+           <weight>75</weight>
+           <bold>true</bold>
+          </font>
+         </property>
+         <property name="text">
+          <string>°C</string>
+         </property>
+        </widget>
        </item>
        <item row="0" column="2">
         <widget class="QLabel" name="label_4">
@@ -108,18 +112,589 @@
          </property>
         </widget>
        </item>
-       <item row="2" column="2">
-        <widget class="QLabel" name="label_6">
+       <item row="0" column="0">
+        <widget class="QLabel" name="label">
          <property name="font">
           <font>
-           <pointsize>34</pointsize>
+           <pointsize>20</pointsize>
            <weight>75</weight>
            <bold>true</bold>
           </font>
          </property>
          <property name="text">
-          <string>°C</string>
+          <string>Temperature A</string>
          </property>
+        </widget>
+       </item>
+       <item row="1" column="1">
+        <widget class="QLCDNumber" name="tempB_LCD">
+         <property name="frameShape">
+          <enum>QFrame::NoFrame</enum>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="3" rowspan="3">
+        <widget class="QGroupBox" name="groupBox_3">
+         <property name="title">
+          <string>Voltages</string>
+         </property>
+         <layout class="QGridLayout" name="gridLayout_4">
+          <item row="0" column="0">
+           <widget class="QGroupBox" name="groupBox_6">
+            <property name="title">
+             <string>Asic channel X</string>
+            </property>
+            <layout class="QGridLayout" name="gridLayout_7">
+             <item row="3" column="0">
+              <widget class="QLabel" name="label_16">
+               <property name="text">
+                <string>BIAS</string>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="1">
+              <widget class="QLCDNumber" name="CHX_VDD">
+               <property name="minimumSize">
+                <size>
+                 <width>0</width>
+                 <height>32</height>
+                </size>
+               </property>
+               <property name="frameShape">
+                <enum>QFrame::NoFrame</enum>
+               </property>
+               <property name="segmentStyle">
+                <enum>QLCDNumber::Flat</enum>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="0">
+              <widget class="QLabel" name="label_18">
+               <property name="text">
+                <string>VDD</string>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="0">
+              <widget class="QLabel" name="label_15">
+               <property name="text">
+                <string>Power supply</string>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="1">
+              <widget class="QLCDNumber" name="CHX_M">
+               <property name="minimumSize">
+                <size>
+                 <width>0</width>
+                 <height>32</height>
+                </size>
+               </property>
+               <property name="frameShape">
+                <enum>QFrame::NoFrame</enum>
+               </property>
+               <property name="segmentStyle">
+                <enum>QLCDNumber::Flat</enum>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="2">
+              <widget class="QLabel" name="label_19">
+               <property name="font">
+                <font>
+                 <pointsize>20</pointsize>
+                 <weight>50</weight>
+                 <bold>false</bold>
+                </font>
+               </property>
+               <property name="text">
+                <string>V</string>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="1">
+              <widget class="QLCDNumber" name="CHX_BIAS">
+               <property name="minimumSize">
+                <size>
+                 <width>0</width>
+                 <height>32</height>
+                </size>
+               </property>
+               <property name="frameShape">
+                <enum>QFrame::NoFrame</enum>
+               </property>
+               <property name="segmentStyle">
+                <enum>QLCDNumber::Flat</enum>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="3">
+              <widget class="QLCDNumber" name="CHX_PW_I">
+               <property name="frameShape">
+                <enum>QFrame::NoFrame</enum>
+               </property>
+               <property name="segmentStyle">
+                <enum>QLCDNumber::Flat</enum>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="1">
+              <widget class="QLCDNumber" name="CHX_PW_V">
+               <property name="minimumSize">
+                <size>
+                 <width>0</width>
+                 <height>32</height>
+                </size>
+               </property>
+               <property name="font">
+                <font>
+                 <weight>50</weight>
+                 <bold>false</bold>
+                </font>
+               </property>
+               <property name="frameShape">
+                <enum>QFrame::NoFrame</enum>
+               </property>
+               <property name="segmentStyle">
+                <enum>QLCDNumber::Flat</enum>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="0">
+              <widget class="QLabel" name="label_17">
+               <property name="text">
+                <string>M</string>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="4">
+              <widget class="QLabel" name="label_20">
+               <property name="font">
+                <font>
+                 <pointsize>20</pointsize>
+                 <weight>50</weight>
+                 <bold>false</bold>
+                </font>
+               </property>
+               <property name="text">
+                <string>mA</string>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="2">
+              <widget class="QLabel" name="label_25">
+               <property name="font">
+                <font>
+                 <pointsize>20</pointsize>
+                 <weight>50</weight>
+                 <bold>false</bold>
+                </font>
+               </property>
+               <property name="text">
+                <string>V</string>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="2">
+              <widget class="QLabel" name="label_26">
+               <property name="font">
+                <font>
+                 <pointsize>20</pointsize>
+                 <weight>50</weight>
+                 <bold>false</bold>
+                </font>
+               </property>
+               <property name="text">
+                <string>V</string>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="2">
+              <widget class="QLabel" name="label_27">
+               <property name="font">
+                <font>
+                 <pointsize>20</pointsize>
+                 <weight>50</weight>
+                 <bold>false</bold>
+                </font>
+               </property>
+               <property name="text">
+                <string>V</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+          <item row="0" column="1" colspan="2">
+           <widget class="QGroupBox" name="groupBox_5">
+            <property name="title">
+             <string>Asic channel Y</string>
+            </property>
+            <layout class="QGridLayout" name="gridLayout_6">
+             <item row="0" column="1">
+              <widget class="QLCDNumber" name="CHY_PW_V">
+               <property name="minimumSize">
+                <size>
+                 <width>0</width>
+                 <height>32</height>
+                </size>
+               </property>
+               <property name="frameShape">
+                <enum>QFrame::NoFrame</enum>
+               </property>
+               <property name="segmentStyle">
+                <enum>QLCDNumber::Flat</enum>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="3">
+              <widget class="QLCDNumber" name="CHY_PW_I">
+               <property name="frameShape">
+                <enum>QFrame::NoFrame</enum>
+               </property>
+               <property name="segmentStyle">
+                <enum>QLCDNumber::Flat</enum>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="0">
+              <widget class="QLabel" name="label_14">
+               <property name="text">
+                <string>VDD</string>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="1">
+              <widget class="QLCDNumber" name="CHY_BIAS">
+               <property name="minimumSize">
+                <size>
+                 <width>0</width>
+                 <height>32</height>
+                </size>
+               </property>
+               <property name="frameShape">
+                <enum>QFrame::NoFrame</enum>
+               </property>
+               <property name="segmentStyle">
+                <enum>QLCDNumber::Flat</enum>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="2">
+              <widget class="QLabel" name="label_23">
+               <property name="font">
+                <font>
+                 <pointsize>20</pointsize>
+                 <weight>50</weight>
+                 <bold>false</bold>
+                </font>
+               </property>
+               <property name="text">
+                <string>V</string>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="0">
+              <widget class="QLabel" name="label_13">
+               <property name="text">
+                <string>M</string>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="0">
+              <widget class="QLabel" name="label_12">
+               <property name="text">
+                <string>BIAS</string>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="0">
+              <widget class="QLabel" name="label_11">
+               <property name="text">
+                <string>Power supply</string>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="1">
+              <widget class="QLCDNumber" name="CHY_M">
+               <property name="minimumSize">
+                <size>
+                 <width>0</width>
+                 <height>32</height>
+                </size>
+               </property>
+               <property name="frameShape">
+                <enum>QFrame::NoFrame</enum>
+               </property>
+               <property name="segmentStyle">
+                <enum>QLCDNumber::Flat</enum>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="1">
+              <widget class="QLCDNumber" name="CHY_VDD">
+               <property name="minimumSize">
+                <size>
+                 <width>0</width>
+                 <height>32</height>
+                </size>
+               </property>
+               <property name="frameShape">
+                <enum>QFrame::NoFrame</enum>
+               </property>
+               <property name="segmentStyle">
+                <enum>QLCDNumber::Flat</enum>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="4">
+              <widget class="QLabel" name="label_24">
+               <property name="font">
+                <font>
+                 <pointsize>20</pointsize>
+                 <weight>50</weight>
+                 <bold>false</bold>
+                </font>
+               </property>
+               <property name="text">
+                <string>mA</string>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="2">
+              <widget class="QLabel" name="label_31">
+               <property name="font">
+                <font>
+                 <pointsize>20</pointsize>
+                 <weight>50</weight>
+                 <bold>false</bold>
+                </font>
+               </property>
+               <property name="text">
+                <string>V</string>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="2">
+              <widget class="QLabel" name="label_32">
+               <property name="font">
+                <font>
+                 <pointsize>20</pointsize>
+                 <weight>50</weight>
+                 <bold>false</bold>
+                </font>
+               </property>
+               <property name="text">
+                <string>V</string>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="2">
+              <widget class="QLabel" name="label_33">
+               <property name="font">
+                <font>
+                 <pointsize>20</pointsize>
+                 <weight>50</weight>
+                 <bold>false</bold>
+                </font>
+               </property>
+               <property name="text">
+                <string>V</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+          <item row="1" column="0" rowspan="2">
+           <widget class="QGroupBox" name="groupBox_4">
+            <property name="title">
+             <string>Asic channel Z</string>
+            </property>
+            <layout class="QGridLayout" name="gridLayout_5">
+             <item row="2" column="0">
+              <widget class="QLabel" name="label_10">
+               <property name="text">
+                <string>M</string>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="1">
+              <widget class="QLCDNumber" name="CHZ_BIAS">
+               <property name="minimumSize">
+                <size>
+                 <width>0</width>
+                 <height>32</height>
+                </size>
+               </property>
+               <property name="frameShape">
+                <enum>QFrame::NoFrame</enum>
+               </property>
+               <property name="segmentStyle">
+                <enum>QLCDNumber::Flat</enum>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="2">
+              <widget class="QLabel" name="label_21">
+               <property name="font">
+                <font>
+                 <pointsize>20</pointsize>
+                 <weight>50</weight>
+                 <bold>false</bold>
+                </font>
+               </property>
+               <property name="text">
+                <string>V</string>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="1">
+              <widget class="QLCDNumber" name="CHZ_M">
+               <property name="minimumSize">
+                <size>
+                 <width>0</width>
+                 <height>32</height>
+                </size>
+               </property>
+               <property name="frameShape">
+                <enum>QFrame::NoFrame</enum>
+               </property>
+               <property name="segmentStyle">
+                <enum>QLCDNumber::Flat</enum>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="1">
+              <widget class="QLCDNumber" name="CHZ_VDD">
+               <property name="minimumSize">
+                <size>
+                 <width>0</width>
+                 <height>32</height>
+                </size>
+               </property>
+               <property name="frameShape">
+                <enum>QFrame::NoFrame</enum>
+               </property>
+               <property name="segmentStyle">
+                <enum>QLCDNumber::Flat</enum>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="0">
+              <widget class="QLabel" name="label_7">
+               <property name="text">
+                <string>VDD</string>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="1">
+              <widget class="QLCDNumber" name="CHZ_PW_V">
+               <property name="minimumSize">
+                <size>
+                 <width>0</width>
+                 <height>32</height>
+                </size>
+               </property>
+               <property name="frameShape">
+                <enum>QFrame::NoFrame</enum>
+               </property>
+               <property name="segmentStyle">
+                <enum>QLCDNumber::Flat</enum>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="3">
+              <widget class="QLCDNumber" name="CHZ_PW_I">
+               <property name="minimumSize">
+                <size>
+                 <width>0</width>
+                 <height>32</height>
+                </size>
+               </property>
+               <property name="frameShape">
+                <enum>QFrame::NoFrame</enum>
+               </property>
+               <property name="segmentStyle">
+                <enum>QLCDNumber::Flat</enum>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="0">
+              <widget class="QLabel" name="label_9">
+               <property name="text">
+                <string>Power supply</string>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="0">
+              <widget class="QLabel" name="label_8">
+               <property name="text">
+                <string>BIAS</string>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="4">
+              <widget class="QLabel" name="label_22">
+               <property name="font">
+                <font>
+                 <pointsize>20</pointsize>
+                 <weight>50</weight>
+                 <bold>false</bold>
+                </font>
+               </property>
+               <property name="text">
+                <string>mA</string>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="2">
+              <widget class="QLabel" name="label_28">
+               <property name="font">
+                <font>
+                 <pointsize>20</pointsize>
+                 <weight>50</weight>
+                 <bold>false</bold>
+                </font>
+               </property>
+               <property name="text">
+                <string>V</string>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="2">
+              <widget class="QLabel" name="label_29">
+               <property name="font">
+                <font>
+                 <pointsize>20</pointsize>
+                 <weight>50</weight>
+                 <bold>false</bold>
+                </font>
+               </property>
+               <property name="text">
+                <string>V</string>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="2">
+              <widget class="QLabel" name="label_30">
+               <property name="font">
+                <font>
+                 <pointsize>20</pointsize>
+                 <weight>50</weight>
+                 <bold>false</bold>
+                </font>
+               </property>
+               <property name="text">
+                <string>V</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+         </layout>
         </widget>
        </item>
       </layout>
@@ -132,18 +707,47 @@
       </property>
       <layout class="QGridLayout" name="gridLayout_3">
        <item row="0" column="0">
-        <widget class="QPushButton" name="PSU_ON_PB">
+        <widget class="QLabel" name="label_34">
          <property name="text">
-          <string>PSU_ON</string>
+          <string>Radiation level</string>
          </property>
         </widget>
        </item>
-       <item row="0" column="1">
-        <widget class="QLabel" name="PSU_STATUS">
+       <item row="1" column="2">
+        <widget class="QPushButton" name="Launch_Measurements">
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>80</height>
+          </size>
+         </property>
+         <property name="font">
+          <font>
+           <pointsize>24</pointsize>
+           <weight>75</weight>
+           <bold>true</bold>
+          </font>
+         </property>
          <property name="text">
-          <string/>
+          <string>Launch measurements</string>
          </property>
         </widget>
+       </item>
+       <item row="0" column="1" colspan="2">
+        <widget class="QLineEdit" name="radiation_level_input"/>
+       </item>
+       <item row="1" column="1">
+        <spacer name="horizontalSpacer">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
        </item>
       </layout>
      </widget>
@@ -155,7 +759,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>800</width>
+     <width>1269</width>
      <height>27</height>
     </rect>
    </property>

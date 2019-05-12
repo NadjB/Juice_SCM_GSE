@@ -4,7 +4,7 @@ requirements = [
     # TODO: put your package requirements here
     'PySide2',
     'hg+https://hephaistos.lpp.polytechnique.fr/rhodecode/HG_REPOSITORIES/LPP/INSTRUMENTATION/lppinstru', 'pyserial',
-    'pyzmq'
+    'pyzmq', 'peakutils', 'numpy', 'pandas'
 ]
 
 setup(
