@@ -67,5 +67,3 @@ def main():
                         ser.readline(),ser.readline()
 
 
-if __name__ == '__main__':
-    main()

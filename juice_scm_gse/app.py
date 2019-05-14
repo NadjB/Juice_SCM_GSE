@@ -9,6 +9,7 @@ from pathlib import Path
 from PySide2.QtWidgets import QMainWindow, QApplication, QMessageBox
 from PySide2.QtCore import QCoreApplication, Signal, QThread, Slot, Qt, QObject
 from discovery_driver import do_measurements
+import numpy as np
 
 from juice_scm_gse.gui.mainwindow import Ui_MainWindow
 
@@ -81,13 +82,16 @@ class DiscoveryWorker(QObject):
         self.push_sock.bind(f"tcp://*:{push_port}")
         self.pull_sock = self.context.socket(zmq.PULL)
         self.pull_sock.bind(f"tcp://*:{pull_port}")
-        self.disco_process = subprocess.Popen(['python', 'discovery_driver/__init__.py'])
+        self.disco_process = subprocess.Popen(['python', 'discovery_driver.py'])
 
     def __del__(self):
         self.disco_process.kill()
 
     def Launch_Measurements(self):
-        self.push_sock.send_json(do_measurements.make_cmd("CHX"))
+        self.push_sock.send_json(
+            do_measurements.make_cmd("CHX", psd_output_dir='/tmp', psd_snapshots_count=256, d_tf_output_dir='/tmp',
+                                     s_tf_output_dir='/tmp', d_tf_frequencies=np.logspace(2, 6, num=20).tolist(),
+                                     s_tf_amplitude=.9, s_tf_steps=100))
         print(self.pull_sock.recv_json())
 
 
@@ -122,12 +126,12 @@ class ApplicationWindow(QMainWindow):
         self.ui.tempC_LCD.display(tempC)
 
     def updateVoltages(self, values):
-        for ch in ["X","Y","Z"]:
-            self.ui.__dict__[f"CH{ch}_PW_V"].display(1.e-3*values[f"V_CH{ch}"])
-            self.ui.__dict__[f"CH{ch}_PW_I"].display(1.e-3*values[f"I_CH{ch}"])
-            self.ui.__dict__[f"CH{ch}_VDD"].display(10./1024.*values[f"VDD_CH{ch}"])
-            self.ui.__dict__[f"CH{ch}_BIAS"].display(5./1024.*values[f"V_BIAS_LNA_CH{ch}"])
-            self.ui.__dict__[f"CH{ch}_M"].display(5./1024.*values[f"M_CH{ch}"])
+        for ch in ["X", "Y", "Z"]:
+            self.ui.__dict__[f"CH{ch}_PW_V"].display(1.e-3 * values[f"V_CH{ch}"])
+            self.ui.__dict__[f"CH{ch}_PW_I"].display(1.e-3 * values[f"I_CH{ch}"])
+            self.ui.__dict__[f"CH{ch}_VDD"].display(10. / 1024. * values[f"VDD_CH{ch}"])
+            self.ui.__dict__[f"CH{ch}_BIAS"].display(5. / 1024. * values[f"V_BIAS_LNA_CH{ch}"])
+            self.ui.__dict__[f"CH{ch}_M"].display(5. / 1024. * values[f"M_CH{ch}"])
 
     def quit_app(self):
         self.close()

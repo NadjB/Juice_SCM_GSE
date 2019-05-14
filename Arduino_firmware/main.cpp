@@ -18,8 +18,8 @@ constexpr auto VDD_CHY = A5;
 constexpr auto VDD_CHZ = A2;
 
 constexpr uint8_t INA_CHX = 0x40;
-constexpr uint8_t INA_CHY = 0x41;
-constexpr uint8_t INA_CHZ = 0x44;
+constexpr uint8_t INA_CHY = 0x44;
+constexpr uint8_t INA_CHZ = 0x41;
 
 constexpr auto TempA           = LTC2983::Channel::CH4;
 constexpr auto TempC           = LTC2983::Channel::CH6;
