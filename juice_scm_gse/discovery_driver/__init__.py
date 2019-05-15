@@ -9,6 +9,8 @@ import numpy as np
 import pandas as pds
 import peakutils
 from juice_scm_gse.analysis import noise,fft
+from juice_scm_gse import config as cfg
+from juice_scm_gse.utils import mkdir
 
 commands = {}
 
@@ -25,6 +27,7 @@ class DiscoCommand:
             "channel": channel,
             "args": kwargs
         }
+        print(f"Build cmd with {payload}")
         return json.dumps(payload)
 
     def __call__(self, *args, **kwargs):
@@ -44,24 +47,27 @@ class Disco_Driver(Discovery):
 
 
 @DiscoCommand
-def do_psd(disco: Disco_Driver, psd_output_dir, psd_snapshots_count=10, psd_sampling_freq=100000, **kwargs):
+def do_psd(disco: Disco_Driver, psd_output_dir, psd_snapshots_count=10, psd_sampling_freq=[100000], **kwargs):
+    mkdir(psd_output_dir)
     snapshot_asic_out = []
     sampling_freq_chx = int()
-    for step in range(psd_snapshots_count):
-        res = disco.analog_in_read(ch1=False, ch2=True, frequency=psd_sampling_freq,
-                                   samplesCount=disco.max_sampling_buffer)
-        sampling_freq_chx = res[1]
-        snapshot_asic_out.append(res[0][0])
+    for f in psd_sampling_freq:
+        for step in range(psd_snapshots_count):
+            res = disco.analog_in_read(ch1=False, ch2=True, frequency=f,
+                                       samplesCount=disco.max_sampling_buffer)
+            sampling_freq_chx = res[1]
+            snapshot_asic_out.append(res[0][0])
 
-    for i in range(len(snapshot_asic_out)):
-        np.savetxt(psd_output_dir + f"/snapshot_psd_{i}_asic_out.csv", snapshot_asic_out[i])
-    freq_ch1, psd = noise.psd(snapshot_asic_out, sampling_freq_chx, window=True, removeMean=True)
-    df = pds.DataFrame(data={"PSD_ASIC_OUTPUT": psd}, index=freq_ch1)
-    df.to_csv(psd_output_dir + "/psd.csv")
+        for i in range(len(snapshot_asic_out)):
+            np.savetxt(psd_output_dir + f"/snapshot_psd_{f}Hz_{i}_asic_out.csv", snapshot_asic_out[i])
+        freq_ch1, psd = noise.psd(snapshot_asic_out, sampling_freq_chx, window=True, removeMean=True)
+        df = pds.DataFrame(data={"PSD_ASIC_OUTPUT": psd}, index=freq_ch1)
+        df.to_csv(psd_output_dir + f"/psd_{f}Hz_.csv")
 
 
 @DiscoCommand
 def do_dynamic_tf(disco: Disco_Driver, d_tf_output_dir, d_tf_frequencies=np.logspace(0,6,num=200), **kwargs):
+    mkdir(d_tf_output_dir)
     tf_g = []
     tf_phi = []
     tf_f = []
@@ -91,6 +97,7 @@ def do_dynamic_tf(disco: Disco_Driver, d_tf_output_dir, d_tf_frequencies=np.logs
 
 @DiscoCommand
 def do_static_tf(disco: Disco_Driver, s_tf_output_dir,s_tf_amplitude=.5,s_tf_steps=100, **kwargs):
+    mkdir(s_tf_output_dir)
     tf_vin = []
     tf_vout = []
     v_min = 2.5-s_tf_amplitude
@@ -161,9 +168,8 @@ def parse_cmd(cmd, discos):
 
 
 def main():
-    disco = Disco_Driver()
     discos = {
-        "CHX": disco, "CHY": disco, "CHZ": disco
+        "CHX": Disco_Driver(cfg.asic_chx_disco.get()), "CHY": Disco_Driver(cfg.asic_chy_disco.get()), "CHZ": Disco_Driver(cfg.asic_chz_disco.get())
     }
     try:
         push_sock, pull_sock = setup_ipc()

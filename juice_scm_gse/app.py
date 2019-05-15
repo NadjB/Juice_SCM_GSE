@@ -2,16 +2,19 @@
 
 
 import sys
-import time
+from functools import partial
 import subprocess
 import zmq
-from pathlib import Path
-from PySide2.QtWidgets import QMainWindow, QApplication, QMessageBox
-from PySide2.QtCore import QCoreApplication, Signal, QThread, Slot, Qt, QObject
-from discovery_driver import do_measurements
+from datetime import datetime
+from PySide2.QtWidgets import QMainWindow, QApplication
+from PySide2.QtCore import Signal, QThread, Slot, QObject
+from juice_scm_gse.discovery_driver import do_measurements
 import numpy as np
-
+from juice_scm_gse.gui.settings_pannel import SettingsPannel
 from juice_scm_gse.gui.mainwindow import Ui_MainWindow
+from juice_scm_gse import config
+from juice_scm_gse.utils import list_of_floats
+from juice_scm_gse.utils.mail import send_mail
 
 
 class TemperaturesWorker(QThread):
@@ -72,6 +75,7 @@ class ArduinoStatusWorker(QThread):
 
 
 class DiscoveryWorker(QObject):
+    measurementsDone = Signal()
     def __init__(self, push_port=9991, pull_port=9992):
         QObject.__init__(self)
         self.thread = QThread()
@@ -88,11 +92,25 @@ class DiscoveryWorker(QObject):
         self.disco_process.kill()
 
     def Launch_Measurements(self):
-        self.push_sock.send_json(
-            do_measurements.make_cmd("CHX", psd_output_dir='/tmp', psd_snapshots_count=256, d_tf_output_dir='/tmp',
-                                     s_tf_output_dir='/tmp', d_tf_frequencies=np.logspace(2, 6, num=20).tolist(),
-                                     s_tf_amplitude=.9, s_tf_steps=100))
-        print(self.pull_sock.recv_json())
+        now = str(datetime.now())
+        for channel in ['CHX','CHY','CHZ']:
+            print(f"Starting measurements on {channel}")
+            kwargs = dict(psd_output_dir=config.global_workdir.get()+f'/run-{now}/{channel}/psd',
+                          psd_snapshots_count=int(config.psd_snapshots_count.get()),
+                          psd_sampling_freq=list_of_floats(config.psd_sampling_freq.get()),
+                          d_tf_frequencies=np.logspace(float(config.dtf_start_freq_exp.get()),
+                                                       float(config.dtf_stop_freq_exp.get()),
+                                                       num=int(config.dtf_freq_points.get())).tolist(),
+                          d_tf_output_dir=config.global_workdir.get() + f'/run-{now}/{channel}/dtf',
+                          s_tf_amplitude = float(config.stf_amplitude.get()),
+                          s_tf_steps = int(config.stf_steps.get()),
+                          s_tf_output_dir=config.global_workdir.get() + f'/run-{now}/{channel}/stf'
+                          )
+            self.push_sock.send_json(
+                do_measurements.make_cmd(channel, **kwargs))
+            print(self.pull_sock.recv_json())
+        self.measurementsDone.emit()
+        send_mail(server=config.mail_server.get(),sender="juicebot@lpp.polytechnique.fr",recipients=config.mail_recipients.get(),subject="Measurement Done!",html_body="",username=config.mail_login.get(),password=config.mail_password.get(),port=465,use_tls=True)
 
 
 class ApplicationWindow(QMainWindow):
@@ -100,8 +118,10 @@ class ApplicationWindow(QMainWindow):
 
     def __init__(self, parent=None):
         super(ApplicationWindow, self).__init__(parent)
+        self.settings_ui = SettingsPannel()
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
+        self.ui.actionSettings.triggered.connect(self.settings_ui.show)
         self.tempWorker = TemperaturesWorker()
         self.tempWorker.updateTemperatures.connect(self.updateTemperatures)
         self.tempWorker.start()
@@ -119,6 +139,9 @@ class ApplicationWindow(QMainWindow):
 
         self.discoWorker = DiscoveryWorker()
         self.ui.Launch_Measurements.clicked.connect(self.discoWorker.Launch_Measurements)
+        self.ui.Launch_Measurements.clicked.connect(partial(self.ui.Launch_Measurements.setDisabled,True))
+        self.discoWorker.measurementsDone.connect(partial(self.ui.Launch_Measurements.setEnabled,True))
+
 
     def updateTemperatures(self, tempA, tempB, tempC):
         self.ui.tempA_LCD.display(tempA)

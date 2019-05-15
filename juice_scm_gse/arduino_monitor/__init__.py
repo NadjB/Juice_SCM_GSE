@@ -1,6 +1,9 @@
 import serial, time, datetime
 import zmq
 from glob import glob
+import juice_scm_gse.config as cfg
+from  juice_scm_gse.utils import mkdir
+
 
 def setup_ipc(port=9990):
     context = zmq.Context()
@@ -39,7 +42,10 @@ def main():
     socket = setup_ipc()
     ser = setup_serial(socket)
     if ser.is_open:
-        with open('/tmp/test_arduino.txt', 'w') as out:
+        path = cfg.global_workdir.get()+"/monitor"
+        mkdir(path)
+        fname = f"{path}/all-{str(datetime.datetime.now())}.txt"
+        with open(fname, 'w') as out:
             reset_and_flush(ser)
             out.write(ser.readline().decode())  # comment line
             out.write(ser.readline().decode())  # header columns names
