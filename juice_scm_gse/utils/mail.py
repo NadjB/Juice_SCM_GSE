@@ -20,11 +20,13 @@ def send_mail(server, sender, recipients, subject, html_body, username=None, pas
     msg['From'] = sender
     msg['To'] = recipients
     msg.attach(MIMEText(html_body, 'html'))
-    if use_tls == 'True':
+    if type(use_tls) is str:
+        use_tls = True if use_tls == 'True' else False
+    if use_tls:
         s = smtplib.SMTP_SSL(server, port)
     else:
         s = smtplib.SMTP(server, port)
     if username is not None and password is not None:
         s.login(username, password)
-    s.sendmail(sender, recipients, msg.as_string())
+    s.sendmail(sender, recipients.split(','), msg.as_string())
     s.quit()

@@ -17,7 +17,7 @@
    <item row="0" column="0">
     <widget class="QTabWidget" name="tabWidget">
      <property name="currentIndex">
-      <number>0</number>
+      <number>1</number>
      </property>
      <widget class="QWidget" name="General">
       <attribute name="title">
@@ -212,7 +212,7 @@
             <item row="0" column="1">
              <widget class="QLineEdit" name="psd_snapshots_count">
               <property name="inputMask">
-               <string>999</string>
+               <string>9999</string>
               </property>
              </widget>
             </item>

@@ -46,6 +46,24 @@ class Disco_Driver(Discovery):
         self.digital_io = 0
 
 
+def set_dc_output(disco: Disco_Driver, dc_value):
+    disco.analog_out_gen(shape='DC', channel=0, offset=dc_value)
+    time.sleep(.2)
+    res = disco.analog_in_read(ch1=False, ch2=True, frequency=disco.max_sampling_buffer * 4,
+                               samplesCount=disco.max_sampling_buffer, ch1range=10.)
+    return np.median(res[0][0])
+
+
+def remove_offset(disco: Disco_Driver):
+    offset1 = set_dc_output(disco,2.1)
+    offset2 = set_dc_output(disco,2.8)
+    a = (offset2-offset1)/(2.8-2.1)
+    b = offset2 - (a*2.8)
+    command = -b/a
+    offset = set_dc_output(disco, command)
+    print(f"Minimized offset to {offset}V with {command}V")
+
+
 @DiscoCommand
 def do_psd(disco: Disco_Driver, psd_output_dir, psd_snapshots_count=10, psd_sampling_freq=[100000], **kwargs):
     mkdir(psd_output_dir)
@@ -63,7 +81,6 @@ def do_psd(disco: Disco_Driver, psd_output_dir, psd_snapshots_count=10, psd_samp
         freq_ch1, psd = noise.psd(snapshot_asic_out, sampling_freq_chx, window=True, removeMean=True)
         df = pds.DataFrame(data={"PSD_ASIC_OUTPUT": psd}, index=freq_ch1)
         df.to_csv(psd_output_dir + f"/psd_{f}Hz_.csv")
-
 
 @DiscoCommand
 def do_dynamic_tf(disco: Disco_Driver, d_tf_output_dir, d_tf_frequencies=np.logspace(0,6,num=200), **kwargs):
@@ -94,6 +111,7 @@ def do_dynamic_tf(disco: Disco_Driver, d_tf_output_dir, d_tf_frequencies=np.logs
             tf_f.append(f)
     tf = pds.DataFrame(data={"G(dB)":tf_g,"Phi(rad)":tf_phi},index=tf_f)
     tf.to_csv(d_tf_output_dir + f"/dynamic_tf.csv")
+    disco.analog_out_disable(channel=0)
 
 @DiscoCommand
 def do_static_tf(disco: Disco_Driver, s_tf_output_dir,s_tf_amplitude=.5,s_tf_steps=100, **kwargs):
@@ -116,6 +134,7 @@ def do_static_tf(disco: Disco_Driver, s_tf_output_dir,s_tf_amplitude=.5,s_tf_ste
         tf_vout.append(np.mean(res[0][1]))
     tf = pds.DataFrame(data={"Vout": tf_vout}, index=tf_vin)
     tf.to_csv(s_tf_output_dir + f"/static_tf.csv")
+    disco.analog_out_disable(channel=0)
 
 
 @DiscoCommand

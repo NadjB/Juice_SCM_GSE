@@ -3,7 +3,7 @@
 # Form implementation generated from reading ui file 'designer/settings.ui',
 # licensing of 'designer/settings.ui' applies.
 #
-# Created: Wed May 15 20:56:49 2019
+# Created: Thu May 16 17:27:17 2019
 #      by: pyside2-uic  running on PySide2 5.12.3
 #
 # WARNING! All changes made in this file will be lost!
@@ -181,7 +181,7 @@ class Ui_Settings(object):
         self.gridLayout.addWidget(self.buttonBox, 1, 0, 1, 1)
 
         self.retranslateUi(Settings)
-        self.tabWidget.setCurrentIndex(0)
+        self.tabWidget.setCurrentIndex(1)
         QtCore.QObject.connect(self.buttonBox, QtCore.SIGNAL("accepted()"), Settings.accept)
         QtCore.QObject.connect(self.buttonBox, QtCore.SIGNAL("rejected()"), Settings.reject)
         QtCore.QMetaObject.connectSlotsByName(Settings)
@@ -206,7 +206,7 @@ class Ui_Settings(object):
         self.groupBox.setTitle(QtWidgets.QApplication.translate("Settings", "PSD", None, -1))
         self.label_4.setText(QtWidgets.QApplication.translate("Settings", "Average number", None, -1))
         self.label_5.setText(QtWidgets.QApplication.translate("Settings", "Sampling frequencies", None, -1))
-        self.psd_snapshots_count.setInputMask(QtWidgets.QApplication.translate("Settings", "999", None, -1))
+        self.psd_snapshots_count.setInputMask(QtWidgets.QApplication.translate("Settings", "9999", None, -1))
         self.groupBox_4.setTitle(QtWidgets.QApplication.translate("Settings", "Asic", None, -1))
         self.label_11.setText(QtWidgets.QApplication.translate("Settings", "X channel discovery", None, -1))
         self.label_12.setText(QtWidgets.QApplication.translate("Settings", "Y channel discovery", None, -1))
