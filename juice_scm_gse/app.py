@@ -13,7 +13,7 @@ import numpy as np
 from juice_scm_gse.gui.settings_pannel import SettingsPannel
 from juice_scm_gse.gui.mainwindow import Ui_MainWindow
 from juice_scm_gse import config
-from juice_scm_gse.utils import list_of_floats
+from juice_scm_gse.utils import list_of_floats,ureg,Q_
 from juice_scm_gse.utils.mail import send_mail
 
 
@@ -37,6 +37,7 @@ class TemperaturesWorker(QThread):
 
 class VoltagesWorker(QThread):
     updateVoltages = Signal(dict)
+    restartDisco = Signal()
 
     def __init__(self, port=9990):
         QThread.__init__(self)
@@ -50,11 +51,18 @@ class VoltagesWorker(QThread):
             string = self.sock.recv()
             topic, data = string.split()
             values = data.decode().split(',')
-            self.updateVoltages.emit({
+            values = {
                 key: float(value) for key, value in zip(
                     ["V_BIAS_LNA_CHX", "V_BIAS_LNA_CHY", "V_BIAS_LNA_CHZ", "M_CHX", "M_CHY", "M_CHZ", "VDD_CHX",
                      "VDD_CHY", "VDD_CHZ", "I_CHX", "I_CHY", "I_CHZ", "V_CHX", "V_CHY", "V_CHZ"], values[1:])
-            })
+            }
+            self.updateVoltages.emit(values)
+
+            limit = Q_(config.asic_current_limit.get())
+            if ureg.milliampere * 1e-3 * values["I_CHX"] > limit:
+                print(f'Limit!!! {ureg.milliampere * 1e-3 * values["I_CHX"]}, {limit}')
+                self.restartDisco.emit()
+
 
 
 class ArduinoStatusWorker(QThread):
@@ -91,6 +99,10 @@ class DiscoveryWorker(QObject):
     def __del__(self):
         self.disco_process.kill()
 
+    def restart(self):
+        self.disco_process.kill()
+        QThread.sleep(1.)
+
     def Launch_Measurements(self):
         now = str(datetime.now())
         for channel in ['CHX','CHY','CHZ']:
@@ -108,7 +120,15 @@ class DiscoveryWorker(QObject):
                           )
             self.push_sock.send_json(
                 do_measurements.make_cmd(channel, **kwargs))
-            print(self.pull_sock.recv_json())
+            while True:
+                try:
+                    print(self.pull_sock.recv_json(flags=zmq.NOBLOCK))
+                    break
+                except zmq.ZMQError:
+                    pass
+                if self.disco_process.poll() is not None:
+                    self.disco_process = subprocess.Popen(['python', 'discovery_driver.py'])
+                    return
         self.measurementsDone.emit()
         send_mail(server=config.mail_server.get(),sender="juicebot@lpp.polytechnique.fr",recipients=config.mail_recipients.get(),subject="Measurement Done!",html_body="",username=config.mail_login.get(),password=config.mail_password.get(),port=465,use_tls=True)
 
@@ -127,20 +147,22 @@ class ApplicationWindow(QMainWindow):
         self.tempWorker.start()
         self.tempWorker.moveToThread(self.tempWorker)
 
-        self.voltagesWorker = VoltagesWorker()
-        self.voltagesWorker.updateVoltages.connect(self.updateVoltages)
-        self.voltagesWorker.start()
-        self.voltagesWorker.moveToThread(self.voltagesWorker)
-
         self.arduinoStatusWorker = ArduinoStatusWorker()
         self.arduinoStatusWorker.updateStatus.connect(self.ui.statusbar.showMessage)
         self.arduinoStatusWorker.start()
         self.arduinoStatusWorker.moveToThread(self.arduinoStatusWorker)
 
+        self.already_restarting_disco = False
         self.discoWorker = DiscoveryWorker()
         self.ui.Launch_Measurements.clicked.connect(self.discoWorker.Launch_Measurements)
         self.ui.Launch_Measurements.clicked.connect(partial(self.ui.Launch_Measurements.setDisabled,True))
         self.discoWorker.measurementsDone.connect(partial(self.ui.Launch_Measurements.setEnabled,True))
+
+        self.voltagesWorker = VoltagesWorker()
+        self.voltagesWorker.updateVoltages.connect(self.updateVoltages)
+        self.voltagesWorker.start()
+        self.voltagesWorker.moveToThread(self.voltagesWorker)
+        self.voltagesWorker.restartDisco.connect(self.restart_disco)
 
 
     def updateTemperatures(self, tempA, tempB, tempC):
@@ -155,6 +177,14 @@ class ApplicationWindow(QMainWindow):
             self.ui.__dict__[f"CH{ch}_VDD"].display(10. / 1024. * values[f"VDD_CH{ch}"])
             self.ui.__dict__[f"CH{ch}_BIAS"].display(5. / 1024. * values[f"V_BIAS_LNA_CH{ch}"])
             self.ui.__dict__[f"CH{ch}_M"].display(5. / 1024. * values[f"M_CH{ch}"])
+
+    def restart_disco(self):
+        if self.already_restarting_disco:
+            return
+        self.already_restarting_disco = True
+        self.discoWorker.restart()
+        self.already_restarting_disco = False
+        self.ui.Launch_Measurements.setEnabled(True)
 
     def quit_app(self):
         self.close()

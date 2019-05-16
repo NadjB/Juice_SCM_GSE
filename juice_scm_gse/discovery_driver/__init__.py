@@ -1,5 +1,5 @@
 import json
-
+from typing import List, Dict
 from lppinstru.discovery import Discovery, c_int, trigsrcAnalogOut1
 import time, datetime
 import zmq, math
@@ -8,9 +8,12 @@ import functools
 import numpy as np
 import pandas as pds
 import peakutils
+import signal,atexit
+from threading import Thread
 from juice_scm_gse.analysis import noise,fft
 from juice_scm_gse import config as cfg
 from juice_scm_gse.utils import mkdir
+from juice_scm_gse.utils import Q_,ureg
 
 commands = {}
 
@@ -186,14 +189,31 @@ def parse_cmd(cmd, discos):
     return json.dumps(cmd)
 
 
+def cmd_loop(discos):
+    push_sock, pull_sock = setup_ipc()
+    while True:
+        cmd = json.loads(pull_sock.recv_json())
+        push_sock.send_json(parse_cmd(cmd, discos))
+
+
+def turn_all_off(discos:Dict[str,Disco_Driver]):
+    for _, disco in discos.items():
+        disco.turn_off()
+
+
 def main():
     discos = {
         "CHX": Disco_Driver(cfg.asic_chx_disco.get()), "CHY": Disco_Driver(cfg.asic_chy_disco.get()), "CHZ": Disco_Driver(cfg.asic_chz_disco.get())
     }
+    turn_all_off(discos)
+    atexit.register(functools.partial(turn_all_off, discos=discos))
+    #signal.signal(signal.SIGTERM, turn_all_off)
+    #signal.signal(signal.SIGINT, turn_all_off)
     try:
-        push_sock, pull_sock = setup_ipc()
+        cmd_thread = Thread(target=cmd_loop, args=(discos,))
+        cmd_thread.start()
         while True:
-            cmd = json.loads(pull_sock.recv_json())
-            push_sock.send_json(parse_cmd(cmd, discos))
+            time.sleep(.1)
     except Exception as e:
+        turn_all_off(discos)
         print(str(e))
