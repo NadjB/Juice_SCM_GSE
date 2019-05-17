@@ -1,7 +1,6 @@
 from setuptools import setup
 
 requirements = [
-    # TODO: put your package requirements here
     'PySide2',
     'hg+https://hephaistos.lpp.polytechnique.fr/rhodecode/HG_REPOSITORIES/LPP/INSTRUMENTATION/lppinstru', 'pyserial',
     'pyzmq', 'peakutils', 'numpy', 'pandas', 'appdirs', 'pint', 'psutil'
@@ -14,11 +13,13 @@ setup(
     author="Alexis Jeandet",
     author_email='alexis.jeandet@member.fsf.org',
     url='https://github.com/jeandet/Juice_SCM_GSE',
-    packages=['juice_scm_gse', 'juice_scm_gse.gui'],
+    packages=['juice_scm_gse', 'juice_scm_gse.gui', 'juice_scm_gse.utils', 'juice_scm_gse.config', 'juice_scm_gse.analysis', 'juice_scm_gse.arduino_monitor', 'juice_scm_gse.discovery_driver'],
 #    package_data={'juice_scm_gse.images': ['*.png']},
     entry_points={
         'console_scripts': [
-            'Juice_SCM_GSE=juice_scm_gse.app:main'
+            'Juice_SCM_GSE=juice_scm_gse.app:main',
+            'Juice_SCM_GSE=juice_scm_gse.arduino_monitor:main',
+            'Juice_SCM_GSE=juice_scm_gse.discovery_driver:main'
         ]
     },
     install_requires=requirements,
