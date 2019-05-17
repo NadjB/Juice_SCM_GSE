@@ -30,6 +30,11 @@ class ConfigEntry:
 
 global_workdir = ConfigEntry("Global", "workdir", "/tmp")
 
+
+def log_dir():
+    return global_workdir.get()+"/logs"
+
+
 mail_server = ConfigEntry("mail", "server", "localhost")
 mail_login = ConfigEntry("mail", "login")
 mail_password = ConfigEntry("mail", "password")

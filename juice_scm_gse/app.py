@@ -7,14 +7,17 @@ import subprocess
 import zmq
 from datetime import datetime
 from PySide2.QtWidgets import QMainWindow, QApplication
-from PySide2.QtCore import Signal, QThread, Slot, QObject
-from juice_scm_gse.discovery_driver import do_measurements
+from PySide2.QtCore import Signal, QThread, Slot, QObject, QMetaObject
+from juice_scm_gse.discovery_driver import do_measurements, turn_on_psu, turn_off_psu
 import numpy as np
 from juice_scm_gse.gui.settings_pannel import SettingsPannel
 from juice_scm_gse.gui.mainwindow import Ui_MainWindow
 from juice_scm_gse import config
-from juice_scm_gse.utils import list_of_floats,ureg,Q_
+from juice_scm_gse.utils import list_of_floats, ureg, Q_, mkdir
 from juice_scm_gse.utils.mail import send_mail
+import psutil
+
+import logging as log
 
 
 class TemperaturesWorker(QThread):
@@ -59,10 +62,10 @@ class VoltagesWorker(QThread):
             self.updateVoltages.emit(values)
 
             limit = Q_(config.asic_current_limit.get())
-            if ureg.milliampere * 1e-3 * values["I_CHX"] > limit:
-                print(f'Limit!!! {ureg.milliampere * 1e-3 * values["I_CHX"]}, {limit}')
+            if any([ureg.milliampere * 1e-3 * value > limit for value in
+                    [values["I_CHX"], values["I_CHY"], values["I_CHZ"]]]):
+                log.critical(f'Reached current limit {limit}, CHX:{ureg.milliampere * 1e-3 * values["I_CHX"]}  CHY:{ureg.milliampere * 1e-3 * values["I_CHY"]}  CHZ:{ureg.milliampere * 1e-3 * values["I_CHZ"]}')
                 self.restartDisco.emit()
-
 
 
 class ArduinoStatusWorker(QThread):
@@ -84,6 +87,7 @@ class ArduinoStatusWorker(QThread):
 
 class DiscoveryWorker(QObject):
     measurementsDone = Signal()
+
     def __init__(self, push_port=9991, pull_port=9992):
         QObject.__init__(self)
         self.thread = QThread()
@@ -94,43 +98,86 @@ class DiscoveryWorker(QObject):
         self.push_sock.bind(f"tcp://*:{push_port}")
         self.pull_sock = self.context.socket(zmq.PULL)
         self.pull_sock.bind(f"tcp://*:{pull_port}")
-        self.disco_process = subprocess.Popen(['python', 'discovery_driver.py'])
+        self.disco_process = None
+        self.disco_process_started = False
+        self.start()
 
     def __del__(self):
         self.disco_process.kill()
 
-    def restart(self):
-        self.disco_process.kill()
-        QThread.sleep(1.)
+    def _disco_process_is_alive(self):
+        if self.disco_process is None:
+            return False
+        if self.disco_process.poll() is None:
+            return True
+        return False
+
+    def start(self):
+        if not self.disco_process_started and self._disco_process_is_alive:
+            for proc in psutil.process_iter():
+                # check whether the process name matches
+                if 'discovery_driver.py' in proc.cmdline():
+                    proc.kill()
+            self.disco_process = subprocess.Popen(['python', 'discovery_driver.py'])
+            QThread.sleep(2.)
+            self.disco_process_started = True
+
+    def stop(self):
+        if self.disco_process_started:
+            self.disco_process_started = False
+            self.disco_process.kill()
+            QThread.sleep(1.)
+
+    @Slot()
+    def turn_on(self):
+        self.start()
+        for channel in ['CHX', 'CHY', 'CHZ']:
+            log.info(f"Turn on {channel}")
+            self.push_sock.send_json(
+                turn_on_psu.make_cmd(channel))
+            log.info(self.pull_sock.recv_json())
+
+    @Slot()
+    def turn_off(self):
+        self.start()
+        for channel in ['CHX', 'CHY', 'CHZ']:
+            log.info(f"Turn off {channel}")
+            self.push_sock.send_json(
+                turn_off_psu.make_cmd(channel))
+            log.info(self.pull_sock.recv_json())
 
     def Launch_Measurements(self):
+        self.start()
         now = str(datetime.now())
-        for channel in ['CHX','CHY','CHZ']:
-            print(f"Starting measurements on {channel}")
-            kwargs = dict(psd_output_dir=config.global_workdir.get()+f'/run-{now}/{channel}/psd',
+        for channel in ['CHX', 'CHY', 'CHZ']:
+            log.info(f"Starting measurements on {channel}")
+            kwargs = dict(psd_output_dir=config.global_workdir.get() + f'/run-{now}/{channel}/psd',
                           psd_snapshots_count=int(config.psd_snapshots_count.get()),
                           psd_sampling_freq=list_of_floats(config.psd_sampling_freq.get()),
                           d_tf_frequencies=np.logspace(float(config.dtf_start_freq_exp.get()),
                                                        float(config.dtf_stop_freq_exp.get()),
                                                        num=int(config.dtf_freq_points.get())).tolist(),
                           d_tf_output_dir=config.global_workdir.get() + f'/run-{now}/{channel}/dtf',
-                          s_tf_amplitude = float(config.stf_amplitude.get()),
-                          s_tf_steps = int(config.stf_steps.get()),
+                          s_tf_amplitude=float(config.stf_amplitude.get()),
+                          s_tf_steps=int(config.stf_steps.get()),
                           s_tf_output_dir=config.global_workdir.get() + f'/run-{now}/{channel}/stf'
                           )
             self.push_sock.send_json(
                 do_measurements.make_cmd(channel, **kwargs))
             while True:
                 try:
-                    print(self.pull_sock.recv_json(flags=zmq.NOBLOCK))
+                    resp = self.pull_sock.recv_json(flags=zmq.NOBLOCK)
+                    log.info(resp)
                     break
                 except zmq.ZMQError:
                     pass
-                if self.disco_process.poll() is not None:
-                    self.disco_process = subprocess.Popen(['python', 'discovery_driver.py'])
+                if not self._disco_process_is_alive():
+                    self.start()
                     return
         self.measurementsDone.emit()
-        send_mail(server=config.mail_server.get(),sender="juicebot@lpp.polytechnique.fr",recipients=config.mail_recipients.get(),subject="Measurement Done!",html_body="",username=config.mail_login.get(),password=config.mail_password.get(),port=465,use_tls=True)
+        send_mail(server=config.mail_server.get(), sender="juicebot@lpp.polytechnique.fr",
+                  recipients=config.mail_recipients.get(), subject="Measurement Done!", html_body="",
+                  username=config.mail_login.get(), password=config.mail_password.get(), port=465, use_tls=True)
 
 
 class ApplicationWindow(QMainWindow):
@@ -142,6 +189,8 @@ class ApplicationWindow(QMainWindow):
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
         self.ui.actionSettings.triggered.connect(self.settings_ui.show)
+        self.ui.power_button.clicked.connect(self.turn_on)
+        self.is_on = False
         self.tempWorker = TemperaturesWorker()
         self.tempWorker.updateTemperatures.connect(self.updateTemperatures)
         self.tempWorker.start()
@@ -155,15 +204,16 @@ class ApplicationWindow(QMainWindow):
         self.already_restarting_disco = False
         self.discoWorker = DiscoveryWorker()
         self.ui.Launch_Measurements.clicked.connect(self.discoWorker.Launch_Measurements)
-        self.ui.Launch_Measurements.clicked.connect(partial(self.ui.Launch_Measurements.setDisabled,True))
-        self.discoWorker.measurementsDone.connect(partial(self.ui.Launch_Measurements.setEnabled,True))
+        self.ui.Launch_Measurements.clicked.connect(partial(self.ui.Launch_Measurements.setDisabled, True))
+        self.ui.Launch_Measurements.clicked.connect(partial(self.ui.power_button.setDisabled, True))
+        self.discoWorker.measurementsDone.connect(partial(self.ui.Launch_Measurements.setEnabled, True))
+        self.discoWorker.measurementsDone.connect(partial(self.ui.power_button.setEnabled, True))
 
         self.voltagesWorker = VoltagesWorker()
         self.voltagesWorker.updateVoltages.connect(self.updateVoltages)
         self.voltagesWorker.start()
         self.voltagesWorker.moveToThread(self.voltagesWorker)
         self.voltagesWorker.restartDisco.connect(self.restart_disco)
-
 
     def updateTemperatures(self, tempA, tempB, tempC):
         self.ui.tempA_LCD.display(tempA)
@@ -182,9 +232,21 @@ class ApplicationWindow(QMainWindow):
         if self.already_restarting_disco:
             return
         self.already_restarting_disco = True
-        self.discoWorker.restart()
+        self.discoWorker.stop()
         self.already_restarting_disco = False
         self.ui.Launch_Measurements.setEnabled(True)
+
+    def turn_on(self):
+        if self.is_on:
+            self.ui.Launch_Measurements.setEnabled(True)
+            self.ui.power_button.setText("Turn ON")
+            QMetaObject.invokeMethod(self.discoWorker, "turn_off")
+            self.is_on = False
+        else:
+            self.ui.Launch_Measurements.setEnabled(False)
+            self.ui.power_button.setText("Turn OFF")
+            QMetaObject.invokeMethod(self.discoWorker, "turn_on")
+            self.is_on = True
 
     def quit_app(self):
         self.close()
@@ -198,4 +260,8 @@ def main(args=sys.argv):
 
 
 if __name__ == "__main__":
+    mkdir(config.log_dir())
+    log.basicConfig(filename=f'{config.log_dir()}/gui-{datetime.now()}.log', format='%(asctime)s - %(message)s',
+                    level=log.INFO)
+    log.getLogger().addHandler(log.StreamHandler(sys.stdout))
     main()

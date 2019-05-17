@@ -34,5 +34,5 @@ def tf(input, output, sampling_freq, window=True, removeMean=True):
         in_spect = fft(waveform=input, sampling_frequency=sampling_freq, window=None, remove_mean=removeMean)
         out_spect = fft(waveform=output, sampling_frequency=sampling_freq, window=None, remove_mean=removeMean)
         freq = in_spect["f"]
-        peaks = peakutils.indexes(in_spect["mod"], min_dist=2)
+        peaks = peakutils.indexes(in_spect["mod"], min_dist=4)
     return None

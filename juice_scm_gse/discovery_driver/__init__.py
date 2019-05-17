@@ -14,6 +14,7 @@ from juice_scm_gse.analysis import noise,fft
 from juice_scm_gse import config as cfg
 from juice_scm_gse.utils import mkdir
 from juice_scm_gse.utils import Q_,ureg
+import logging as log
 
 commands = {}
 
@@ -30,7 +31,7 @@ class DiscoCommand:
             "channel": channel,
             "args": kwargs
         }
-        print(f"Build cmd with {payload}")
+        log.info(f"Build cmd with {payload}")
         return json.dumps(payload)
 
     def __call__(self, *args, **kwargs):
@@ -64,7 +65,7 @@ def remove_offset(disco: Disco_Driver):
     b = offset2 - (a*2.8)
     command = -b/a
     offset = set_dc_output(disco, command)
-    print(f"Minimized offset to {offset}V with {command}V")
+    log.info(f"Minimized offset to {offset}V with {command}V")
 
 
 @DiscoCommand
@@ -92,7 +93,7 @@ def do_dynamic_tf(disco: Disco_Driver, d_tf_output_dir, d_tf_frequencies=np.logs
     tf_phi = []
     tf_f = []
     for f in d_tf_frequencies:
-        disco.analog_out_gen(frequency=f, shape='Sine', channel=0, amplitude=.1,offset=2.5)
+        disco.analog_out_gen(frequency=f, shape='Sine', channel=0, amplitude=2.,offset=2.5)
         time.sleep(.3)
         res = disco.analog_in_read(ch1=True, ch2=True, frequency=min(f*disco.max_sampling_buffer/10.,disco.max_sampling_freq), samplesCount=disco.max_sampling_buffer, ch1range=10.)
         real_fs = res[1]
@@ -153,12 +154,12 @@ def turn_off_psu(disco: Disco_Driver, **kwargs):
 @DiscoCommand
 def do_measurements(disco, **kwargs):
     for measurement in [do_psd, do_dynamic_tf, do_static_tf]:
-        print("turn ON PSU")
+        log.info("turn ON PSU")
         turn_on_psu(disco)
         time.sleep(2.)
-        print("start " + measurement.__name__)
+        log.info("start " + measurement.__name__)
         measurement(disco, **kwargs)
-        print("turn OFF PSU")
+        log.info("turn OFF PSU")
         turn_off_psu(disco)
         time.sleep(2.)
 
@@ -172,6 +173,7 @@ def process_cmd(cmd_dict, discos):
         return "success"
     except Exception as e:
         traceback.print_exc(file=sys.stdout)
+        log.error("unknown command " + str(e))
         return "unknown command " + str(e)
 
 
@@ -202,13 +204,18 @@ def turn_all_off(discos:Dict[str,Disco_Driver]):
 
 
 def main():
+    mkdir(cfg.log_dir())
+    log.basicConfig(filename=f'{cfg.log_dir()}/disco-server-{datetime.datetime.now()}.log',
+                    format='%(asctime)s - %(message)s',
+                    level=log.INFO)
+    log.getLogger().addHandler(log.StreamHandler(sys.stdout))
     discos = {
         "CHX": Disco_Driver(cfg.asic_chx_disco.get()), "CHY": Disco_Driver(cfg.asic_chy_disco.get()), "CHZ": Disco_Driver(cfg.asic_chz_disco.get())
     }
     turn_all_off(discos)
     atexit.register(functools.partial(turn_all_off, discos=discos))
-    #signal.signal(signal.SIGTERM, turn_all_off)
-    #signal.signal(signal.SIGINT, turn_all_off)
+    for sig in (signal.SIGABRT, signal.SIGILL, signal.SIGINT, signal.SIGSEGV, signal.SIGTERM):
+        signal.signal(sig, functools.partial(turn_all_off, discos=discos))
     try:
         cmd_thread = Thread(target=cmd_loop, args=(discos,))
         cmd_thread.start()
@@ -216,4 +223,4 @@ def main():
             time.sleep(.1)
     except Exception as e:
         turn_all_off(discos)
-        print(str(e))
+        log.error(str(e))
