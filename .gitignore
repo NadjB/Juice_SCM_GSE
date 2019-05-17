@@ -13,9 +13,6 @@ venv/
 
 .idea/
 
-juice_scm_gse/gui/mainwindow.py
-juice_scm_gse/gui/resources_rc.py
-
 *.swp
 build-Arduino*
 CMakeLists.txt.user

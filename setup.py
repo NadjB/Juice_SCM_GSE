@@ -2,7 +2,7 @@ from setuptools import setup
 
 requirements = [
     'PySide2',
-    'hg+https://hephaistos.lpp.polytechnique.fr/rhodecode/HG_REPOSITORIES/LPP/INSTRUMENTATION/lppinstru', 'pyserial',
+    'lppinstru', 'pyserial',
     'pyzmq', 'peakutils', 'numpy', 'pandas', 'appdirs', 'pint', 'psutil'
 ]
 
