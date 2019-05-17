@@ -18,8 +18,8 @@ setup(
     entry_points={
         'console_scripts': [
             'Juice_SCM_GSE=juice_scm_gse.app:main',
-            'Juice_SCM_GSE=juice_scm_gse.arduino_monitor:main',
-            'Juice_SCM_GSE=juice_scm_gse.discovery_driver:main'
+            'Juice_Ardiuno_Monitor=juice_scm_gse.arduino_monitor:main',
+            'Juice_Discovery_Driver=juice_scm_gse.discovery_driver:main'
         ]
     },
     install_requires=requirements,
