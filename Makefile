@@ -6,7 +6,7 @@ DESIGNER_DIR = designer
 COMPILED_DIR = juice_scm_gse/gui
 
 # UI files to compile, separated by SPACE
-UI_FILES = mainwindow.ui settings.ui
+UI_FILES = mainwindow.ui settings.ui progress.ui
 # Qt resource files to compile, separated by SPACE
 QRC_FILES = resources.qrc
 

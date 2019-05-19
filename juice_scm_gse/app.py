@@ -4,13 +4,14 @@
 import sys, os
 from functools import partial
 import subprocess
-import zmq
+import zmq, json
 from datetime import datetime
 from PySide2.QtWidgets import QMainWindow, QApplication
 from PySide2.QtCore import Signal, QThread, Slot, QObject, QMetaObject
 from juice_scm_gse.discovery_driver import do_measurements, turn_on_psu, turn_off_psu
 import numpy as np
 from juice_scm_gse.gui.settings_pannel import SettingsPannel
+from juice_scm_gse.gui.progress_pannel import ProgressPannel
 from juice_scm_gse.gui.mainwindow import Ui_MainWindow
 from juice_scm_gse import config
 from juice_scm_gse.utils import list_of_floats, ureg, Q_, mkdir
@@ -144,8 +145,9 @@ class ArduinoStatusWorker(QThread):
 
 class DiscoveryWorker(QObject):
     measurementsDone = Signal()
+    progress_update = Signal(str,float,str,float,str,float)
 
-    def __init__(self, push_port=9991, pull_port=9992):
+    def __init__(self, push_port=9991, pull_port=9992, progress_port=9993):
         QObject.__init__(self)
         self.thread = QThread()
         self.thread.start()
@@ -155,8 +157,11 @@ class DiscoveryWorker(QObject):
         self.push_sock.bind(f"tcp://*:{push_port}")
         self.pull_sock = self.context.socket(zmq.PULL)
         self.pull_sock.bind(f"tcp://*:{pull_port}")
+        self.progress_sock = self.context.socket(zmq.PULL)
+        self.progress_sock.bind(f"tcp://*:{progress_port}")
         self.disco_process = None
         self.disco_process_started = False
+        self.current_channel = ""
         self.start()
 
     def __del__(self):
@@ -209,10 +214,18 @@ class DiscoveryWorker(QObject):
                 turn_off_psu.make_cmd(channel))
             log.info(self.pull_sock.recv_json())
 
+    def _progress(self):
+        try:
+            resp = json.loads(self.progress_sock.recv_json(flags=zmq.NOBLOCK))
+            self.progress_update.emit(self.current_channel,0., resp["step"],resp["global_progress"],"",resp["step_progress"])
+        except zmq.ZMQError:
+            pass
+
     def Launch_Measurements(self):
         self.start()
         now = str(datetime.now())
         for channel in ['CHX', 'CHY', 'CHZ']:
+            self.current_channel = channel
             log.info(f"Starting measurements on {channel}")
             kwargs = dict(psd_output_dir=config.global_workdir.get() + f'/run-{now}/{channel}/psd',
                           psd_snapshots_count=int(config.psd_snapshots_count.get()),
@@ -228,6 +241,7 @@ class DiscoveryWorker(QObject):
             self.push_sock.send_json(
                 do_measurements.make_cmd(channel, **kwargs))
             while True:
+                self._progress()
                 try:
                     resp = self.pull_sock.recv_json(flags=zmq.NOBLOCK)
                     log.info(resp)
@@ -249,6 +263,7 @@ class ApplicationWindow(QMainWindow):
     def __init__(self, parent=None):
         super(ApplicationWindow, self).__init__(parent)
         self.settings_ui = SettingsPannel()
+        self.progress_pannel = ProgressPannel()
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
         self.ui.actionSettings.triggered.connect(self.settings_ui.show)
@@ -267,10 +282,13 @@ class ApplicationWindow(QMainWindow):
         self.already_restarting_disco = False
         self.discoWorker = DiscoveryWorker()
         self.ui.Launch_Measurements.clicked.connect(self.discoWorker.Launch_Measurements)
+        self.ui.Launch_Measurements.clicked.connect(self.progress_pannel.show)
         self.ui.Launch_Measurements.clicked.connect(partial(self.ui.Launch_Measurements.setDisabled, True))
         self.ui.Launch_Measurements.clicked.connect(partial(self.ui.power_button.setDisabled, True))
         self.discoWorker.measurementsDone.connect(partial(self.ui.Launch_Measurements.setEnabled, True))
         self.discoWorker.measurementsDone.connect(partial(self.ui.power_button.setEnabled, True))
+        self.discoWorker.measurementsDone.connect(self.progress_pannel.hide)
+        self.discoWorker.progress_update.connect(self.progress_pannel.update_progress)
 
         self.voltagesWorker = VoltagesWorker()
         self.voltagesWorker.updateVoltages.connect(self.updateVoltages)

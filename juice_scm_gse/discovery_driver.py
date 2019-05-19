@@ -1,4 +1,4 @@
-import discovery_driver
+from juice_scm_gse.discovery_driver import main
 
 if __name__ == '__main__':
-    discovery_driver.main()
+    main()
