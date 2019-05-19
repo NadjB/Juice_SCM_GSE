@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 
-import sys
+import sys, os
 from functools import partial
 import subprocess
 import zmq
@@ -30,12 +30,22 @@ class TemperaturesWorker(QThread):
         self.sock.connect(f"tcp://localhost:{port}")
         self.sock.setsockopt(zmq.SUBSCRIBE, b"Temperatures")
 
+    def __del__(self):
+        del self.sock
+        del self.context
+
     def run(self):
-        while (True):
-            string = self.sock.recv()
-            topic, data = string.split()
-            t, tempA, tempB, tempC = data.decode().split(',')
-            self.updateTemperatures.emit(float(tempA), float(tempB), float(tempC))
+        while True:
+            try:
+                string = self.sock.recv(flags=zmq.NOBLOCK)
+                topic, data = string.split()
+                t, tempA, tempB, tempC = data.decode().split(',')
+                self.updateTemperatures.emit(float(tempA), float(tempB), float(tempC))
+            except zmq.ZMQError:
+                pass
+            if self.isInterruptionRequested():
+                return
+            QThread.msleep(10)
 
 
 class VoltagesWorker(QThread):
@@ -49,24 +59,33 @@ class VoltagesWorker(QThread):
         self.sock.connect(f"tcp://localhost:{port}")
         self.sock.setsockopt(zmq.SUBSCRIBE, b"Voltages")
 
+    def __del__(self):
+        del self.sock
+        del self.context
+
     def run(self):
-        while (True):
-            string = self.sock.recv()
-            topic, data = string.split()
-            values = data.decode().split(',')
-            values = {
-                key: float(value) for key, value in zip(
-                    ["V_BIAS_LNA_CHX", "V_BIAS_LNA_CHY", "V_BIAS_LNA_CHZ", "M_CHX", "M_CHY", "M_CHZ", "VDD_CHX",
-                     "VDD_CHY", "VDD_CHZ", "I_CHX", "I_CHY", "I_CHZ", "V_CHX", "V_CHY", "V_CHZ"], values[1:])
-            }
-            self.updateVoltages.emit(values)
+        while True:
+            try:
+                string = self.sock.recv(flags=zmq.NOBLOCK)
+                topic, data = string.split()
+                values = data.decode().split(',')
+                values = {
+                    key: float(value) for key, value in zip(
+                        ["V_BIAS_LNA_CHX", "V_BIAS_LNA_CHY", "V_BIAS_LNA_CHZ", "M_CHX", "M_CHY", "M_CHZ", "VDD_CHX",
+                         "VDD_CHY", "VDD_CHZ", "I_CHX", "I_CHY", "I_CHZ", "V_CHX", "V_CHY", "V_CHZ"], values[1:])
+                }
+                self.updateVoltages.emit(values)
 
-            limit = Q_(config.asic_current_limit.get())
-            if any([ureg.milliampere * 1e-3 * value > limit for value in
-                    [values["I_CHX"], values["I_CHY"], values["I_CHZ"]]]):
-                log.critical(f'Reached current limit {limit}, CHX:{ureg.milliampere * 1e-3 * values["I_CHX"]}  CHY:{ureg.milliampere * 1e-3 * values["I_CHY"]}  CHZ:{ureg.milliampere * 1e-3 * values["I_CHZ"]}')
-                self.restartDisco.emit()
-
+                limit = Q_(config.asic_current_limit.get())
+                if any([ureg.milliampere * 1e-3 * value > limit for value in
+                        [values["I_CHX"], values["I_CHY"], values["I_CHZ"]]]):
+                    log.critical(f'Reached current limit {limit}, CHX:{ureg.milliampere * 1e-3 * values["I_CHX"]}  CHY:{ureg.milliampere * 1e-3 * values["I_CHY"]}  CHZ:{ureg.milliampere * 1e-3 * values["I_CHZ"]}')
+                    self.restartDisco.emit()
+            except zmq.ZMQError:
+                pass
+            if self.isInterruptionRequested():
+                return
+            QThread.msleep(10)
 
 class ArduinoStatusWorker(QThread):
     updateStatus = Signal(str)
@@ -77,12 +96,50 @@ class ArduinoStatusWorker(QThread):
         self.sock = self.context.socket(zmq.SUB)
         self.sock.connect(f"tcp://localhost:{port}")
         self.sock.setsockopt(zmq.SUBSCRIBE, b"Status")
+        self.arduino_process = None
+        self.arduino_process_started = False
+
+    def __del__(self):
+        del self.sock
+        del self.context
+
+    def _arduino_process_is_alive(self):
+        if self.arduino_process is None:
+            return False
+        if self.arduino_process.poll() is None:
+            return True
+        return False
+
+    def start(self):
+        if not self.arduino_process_started or not self._arduino_process_is_alive():
+            for proc in psutil.process_iter():
+                # check whether the process name matches
+                if 'arduino_monitor.py' in proc.cmdline():
+                    proc.kill()
+            if os.path.exists('arduino_monitor.py'):
+                self.arduino_process = subprocess.Popen(['python', 'arduino_monitor.py'])
+            else:
+                self.arduino_process = subprocess.Popen(['Juice_Ardiuno_Monitor'])
+            self.arduino_process_started = True
+        QThread.start(self)
+
+    def stop(self):
+        if self.arduino_process_started:
+            self.arduino_process_started = False
+            self.arduino_process.kill()
 
     def run(self):
-        while (True):
-            string = self.sock.recv()
-            topic, data = string.split()
-            self.updateStatus.emit("Temperatures and Voltages monitor: " + data.decode())
+        while True:
+            try:
+                string = self.sock.recv(flags=zmq.NOBLOCK)
+                topic, data = string.split()
+                self.updateStatus.emit("Temperatures and Voltages monitor: " + data.decode())
+            except zmq.ZMQError:
+                pass
+            if self.isInterruptionRequested():
+                self.stop()
+                return
+            QThread.msleep(10)
 
 
 class DiscoveryWorker(QObject):
@@ -104,6 +161,9 @@ class DiscoveryWorker(QObject):
 
     def __del__(self):
         self.disco_process.kill()
+        del self.push_sock
+        del self.pull_sock
+        del self.context
 
     def _disco_process_is_alive(self):
         if self.disco_process is None:
@@ -113,12 +173,15 @@ class DiscoveryWorker(QObject):
         return False
 
     def start(self):
-        if not self.disco_process_started and self._disco_process_is_alive:
+        if not self.disco_process_started or not self._disco_process_is_alive():
             for proc in psutil.process_iter():
                 # check whether the process name matches
                 if 'discovery_driver.py' in proc.cmdline():
                     proc.kill()
-            self.disco_process = subprocess.Popen(['python', 'discovery_driver.py'])
+            if os.path.exists('discovery_driver.py'):
+                self.disco_process = subprocess.Popen(['python', 'discovery_driver.py'])
+            else:
+                self.disco_process = subprocess.Popen(['Juice_Discovery_Driver'])
             QThread.sleep(2.)
             self.disco_process_started = True
 
@@ -214,6 +277,17 @@ class ApplicationWindow(QMainWindow):
         self.voltagesWorker.start()
         self.voltagesWorker.moveToThread(self.voltagesWorker)
         self.voltagesWorker.restartDisco.connect(self.restart_disco)
+
+    def __del__(self):
+        for thr in [self.arduinoStatusWorker,self.tempWorker,self.voltagesWorker]:
+            thr.requestInterruption()
+            while thr.isRunning():
+                QThread.msleep(10)
+        del self.discoWorker
+        del self.arduinoStatusWorker
+        del self.tempWorker
+        del self.voltagesWorker
+        self.close()
 
     def updateTemperatures(self, tempA, tempB, tempC):
         self.ui.tempA_LCD.display(tempA)
