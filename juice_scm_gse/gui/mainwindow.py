@@ -3,7 +3,7 @@
 # Form implementation generated from reading ui file 'designer/mainwindow.ui',
 # licensing of 'designer/mainwindow.ui' applies.
 #
-# Created: Fri May 17 16:19:50 2019
+# Created: Mon May 20 16:11:39 2019
 #      by: pyside2-uic  running on PySide2 5.12.3
 #
 # WARNING! All changes made in this file will be lost!
@@ -367,15 +367,12 @@ class Ui_MainWindow(object):
         font.setBold(True)
         self.Launch_Measurements.setFont(font)
         self.Launch_Measurements.setObjectName("Launch_Measurements")
-        self.gridLayout_3.addWidget(self.Launch_Measurements, 1, 2, 1, 1)
-        self.radiation_level_input = QtWidgets.QLineEdit(self.groupBox_2)
-        self.radiation_level_input.setObjectName("radiation_level_input")
-        self.gridLayout_3.addWidget(self.radiation_level_input, 0, 1, 1, 2)
+        self.gridLayout_3.addWidget(self.Launch_Measurements, 1, 3, 1, 1)
         spacerItem = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
-        self.gridLayout_3.addItem(spacerItem, 1, 1, 1, 1)
-        self.label_34 = QtWidgets.QLabel(self.groupBox_2)
-        self.label_34.setObjectName("label_34")
-        self.gridLayout_3.addWidget(self.label_34, 0, 0, 1, 1)
+        self.gridLayout_3.addItem(spacerItem, 1, 2, 1, 1)
+        self.notes_label = QtWidgets.QLabel(self.groupBox_2)
+        self.notes_label.setObjectName("notes_label")
+        self.gridLayout_3.addWidget(self.notes_label, 0, 0, 1, 1)
         self.power_button = QtWidgets.QPushButton(self.groupBox_2)
         self.power_button.setMinimumSize(QtCore.QSize(0, 80))
         font = QtGui.QFont()
@@ -384,7 +381,10 @@ class Ui_MainWindow(object):
         font.setBold(True)
         self.power_button.setFont(font)
         self.power_button.setObjectName("power_button")
-        self.gridLayout_3.addWidget(self.power_button, 2, 2, 1, 1)
+        self.gridLayout_3.addWidget(self.power_button, 2, 3, 1, 1)
+        self.notes = QtWidgets.QTextEdit(self.groupBox_2)
+        self.notes.setObjectName("notes")
+        self.gridLayout_3.addWidget(self.notes, 0, 1, 1, 3)
         self.gridLayout.addWidget(self.groupBox_2, 1, 0, 1, 1)
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(MainWindow)
@@ -446,7 +446,7 @@ class Ui_MainWindow(object):
         self.label_30.setText(QtWidgets.QApplication.translate("MainWindow", "V", None, -1))
         self.groupBox_2.setTitle(QtWidgets.QApplication.translate("MainWindow", "Measurements", None, -1))
         self.Launch_Measurements.setText(QtWidgets.QApplication.translate("MainWindow", "Launch measurements", None, -1))
-        self.label_34.setText(QtWidgets.QApplication.translate("MainWindow", "Radiation level", None, -1))
+        self.notes_label.setText(QtWidgets.QApplication.translate("MainWindow", "Notes, radiation level...:", None, -1))
         self.power_button.setText(QtWidgets.QApplication.translate("MainWindow", "Turn ON", None, -1))
         self.menuSettings.setTitle(QtWidgets.QApplication.translate("MainWindow", "Edit", None, -1))
         self.actionSettings.setText(QtWidgets.QApplication.translate("MainWindow", "Settings", None, -1))

@@ -7,7 +7,7 @@ import subprocess
 import zmq, json
 from datetime import datetime
 from PySide2.QtWidgets import QMainWindow, QApplication
-from PySide2.QtCore import Signal, QThread, Slot, QObject, QMetaObject
+from PySide2.QtCore import Signal, QThread, Slot, QObject, QMetaObject,QGenericArgument, Qt
 from juice_scm_gse.discovery_driver import do_measurements, turn_on_psu, turn_off_psu
 import numpy as np
 from juice_scm_gse.gui.settings_pannel import SettingsPannel
@@ -234,28 +234,25 @@ class DiscoveryWorker(QObject):
         except zmq.ZMQError:
             pass
 
-    def Launch_Measurements(self):
+    @Slot(str)
+    def Launch_Measurements(self, work_dir):
         self.start()
-        now = str(datetime.now())
         i = 0.
-        send_mail(server=config.mail_server.get(), sender="juicebot@lpp.polytechnique.fr",
-                  recipients=config.mail_recipients.get(), subject="Starting measurement", html_body="",
-                  username=config.mail_login.get(), password=config.mail_password.get(), port=465, use_tls=True)
         for channel in ['CHX', 'CHY', 'CHZ']:
             self.current_channel = channel
             self.channel_progress = i/3.
             i += 1.
             log.info(f"Starting measurements on {channel}")
-            kwargs = dict(psd_output_dir=config.global_workdir.get() + f'/run-{now}/{channel}/psd',
+            kwargs = dict(psd_output_dir= f'{work_dir}/{channel}/psd',
                           psd_snapshots_count=int(config.psd_snapshots_count.get()),
                           psd_sampling_freq=list_of_floats(config.psd_sampling_freq.get()),
                           d_tf_frequencies=np.logspace(float(config.dtf_start_freq_exp.get()),
                                                        float(config.dtf_stop_freq_exp.get()),
                                                        num=int(config.dtf_freq_points.get())).tolist(),
-                          d_tf_output_dir=config.global_workdir.get() + f'/run-{now}/{channel}/dtf',
+                          d_tf_output_dir=f'{work_dir}/{channel}/dtf',
                           s_tf_amplitude=float(config.stf_amplitude.get()),
                           s_tf_steps=int(config.stf_steps.get()),
-                          s_tf_output_dir=config.global_workdir.get() + f'/run-{now}/{channel}/stf'
+                          s_tf_output_dir=f'{work_dir}/{channel}/stf'
                           )
             self.push_sock.send_json(
                 do_measurements.make_cmd(channel, **kwargs))
@@ -278,6 +275,7 @@ class DiscoveryWorker(QObject):
 
 class ApplicationWindow(QMainWindow):
     """Main Window"""
+    Launch_Measurements = Signal(str)
 
     def __init__(self, parent=None):
         super(ApplicationWindow, self).__init__(parent)
@@ -300,7 +298,8 @@ class ApplicationWindow(QMainWindow):
 
         self.already_restarting_disco = False
         self.discoWorker = DiscoveryWorker()
-        self.ui.Launch_Measurements.clicked.connect(self.discoWorker.Launch_Measurements)
+        self.ui.Launch_Measurements.clicked.connect(self.start_measurement)
+        self.Launch_Measurements.connect(self.discoWorker.Launch_Measurements)
         self.ui.Launch_Measurements.clicked.connect(self.progress_pannel.show)
         self.ui.Launch_Measurements.clicked.connect(partial(self.ui.Launch_Measurements.setDisabled, True))
         self.ui.Launch_Measurements.clicked.connect(partial(self.ui.power_button.setDisabled, True))
@@ -358,6 +357,34 @@ class ApplicationWindow(QMainWindow):
             self.ui.power_button.setText("Turn OFF")
             QMetaObject.invokeMethod(self.discoWorker, "turn_on")
             self.is_on = True
+
+    def start_measurement(self):
+        now = str(datetime.now())
+        work_dir = f'/{config.global_workdir.get()}/run-{now}/'
+        self.Launch_Measurements.emit(work_dir)
+        mkdir(work_dir)
+        manifest = {section_name:{name:(value if 'pass' not in name else '******') for name,value in section_values.items()} for section_name,section_values in config._config.items()}
+        manifest["result_dir"] = work_dir
+        manifest["notes"] = self.ui.notes.toPlainText()
+        manifest["start_time"] = now
+        with open(f'{work_dir}/config.json','w') as out:
+            out.write(json.dumps(manifest))
+        manifest_html = json.dumps(manifest, indent=4).replace(' ', '&nbsp').replace(',\n', ',<br>').replace('\n', '<br>')
+        html=f'''
+ <!DOCTYPE html>
+<html>
+<body>
+<h1>Measurement started at {now}</h1>
+<p>
+{manifest_html}
+</p>
+
+</body>
+</html> 
+        '''
+        send_mail(server=config.mail_server.get(), sender="juicebot@lpp.polytechnique.fr",
+                  recipients=config.mail_recipients.get(), subject="Starting measurement", html_body=html,
+                  username=config.mail_login.get(), password=config.mail_password.get(), port=465, use_tls=True)
 
     def quit_app(self):
         self.close()

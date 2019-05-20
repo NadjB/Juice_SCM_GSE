@@ -59,13 +59,15 @@ def set_dc_output(disco: Disco_Driver, dc_value):
 
 
 def remove_offset(disco: Disco_Driver):
-    offset1 = set_dc_output(disco,2.1)
-    offset2 = set_dc_output(disco,2.8)
-    a = (offset2-offset1)/(2.8-2.1)
-    b = offset2 - (a*2.8)
-    command = -b/a
+    v_min, v_max = 2.35, 2.65
+    offset1 = set_dc_output(disco,v_min)
+    offset2 = set_dc_output(disco,v_max)
+    a = (offset2-offset1)/(v_max-v_min)
+    b = offset2 - (a*v_max)
+    command = max(min(-b/a,5.),-5.)
     offset = set_dc_output(disco, command)
     log.info(f"Minimized offset to {offset}V with {command}V")
+    return command
 
 
 @DiscoCommand
@@ -73,6 +75,7 @@ def do_psd(disco: Disco_Driver,progress_func, psd_output_dir, psd_snapshots_coun
     mkdir(psd_output_dir)
     snapshot_asic_out = []
     sampling_freq_chx = int()
+    remove_offset(disco)
     progress_func("psd",0.,"", 0.)
     for f in psd_sampling_freq:
         for step in range(psd_snapshots_count):
@@ -100,10 +103,11 @@ def do_dynamic_tf(disco: Disco_Driver,progress_func, d_tf_output_dir, d_tf_frequ
     tf_f = []
     progress_func("TF",0.,"", 0.)
     i = 0.
+    dc = remove_offset(disco)
     for f in d_tf_frequencies:
         progress_func("TF", 0., f"Current frequency {f:.1f}Hz", i/len(d_tf_frequencies))
         i+=1.
-        disco.analog_out_gen(frequency=f, shape='Sine', channel=0, amplitude=2.,offset=2.5)
+        disco.analog_out_gen(frequency=f, shape='Sine', channel=0, amplitude=.2,offset=dc)
         time.sleep(.3)
         res = disco.analog_in_read(ch1=True, ch2=True, frequency=min(f*disco.max_sampling_buffer/10.,disco.max_sampling_freq), samplesCount=disco.max_sampling_buffer, ch1range=10.)
         real_fs = res[1]
