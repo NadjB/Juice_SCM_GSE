@@ -138,7 +138,7 @@ template<typename SPIDev_t> class Ltc2983
     { result = _spi.write(static_cast<T>(data)); }
     else if constexpr(is_same<T, uint32_t>::value)
     {
-      result = _spi.write(static_cast<uint16_t>(data >> 16)) << 16;
+      result = static_cast<uint32_t>(_spi.write(static_cast<uint16_t>(data >> 16))) << 16;
       result += _spi.write(static_cast<uint16_t>(data));
     }
     _spi.select(false);
@@ -188,8 +188,9 @@ public:
 
   inline double temperature(const LTC2983::Channel channel) const
   {
-    auto raw = static_cast<int32_t>(adc_raw_result(channel))<<8;
-    return static_cast<double>(raw>>8)/1024.;
+    int32_t raw = static_cast<int32_t>(adc_raw_result(channel))&0xFFFFFF;
+    if(0x800000&raw)raw|=0xFF000000;
+    return static_cast<double>(raw)/(1024.);
   }
 
   inline void configure_RTD(
