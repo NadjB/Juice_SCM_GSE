@@ -364,13 +364,6 @@ class ApplicationWindow(QMainWindow):
 
 
 def main(args=sys.argv):
-    app = QApplication(args)
-    application = ApplicationWindow()
-    application.show()
-    sys.exit(app.exec_())
-
-
-if __name__ == "__main__":
     lib_dir = os.path.dirname(os.path.realpath(__file__))
     bin_dir = lib_dir + "/../../../bin"
     desktop_entry_path = os.path.expanduser("~")+'/.local/share/applications/Juice-scm-egse.desktop'
@@ -381,4 +374,11 @@ if __name__ == "__main__":
     log.basicConfig(filename=f'{config.log_dir()}/gui-{datetime.now()}.log', format='%(asctime)s - %(message)s',
                     level=log.INFO)
     log.getLogger().addHandler(log.StreamHandler(sys.stdout))
+    app = QApplication(args)
+    application = ApplicationWindow()
+    application.show()
+    sys.exit(app.exec_())
+
+
+if __name__ == "__main__":
     main()
