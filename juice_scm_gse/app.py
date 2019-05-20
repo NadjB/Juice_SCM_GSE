@@ -365,7 +365,7 @@ class ApplicationWindow(QMainWindow):
 
 def main(args=sys.argv):
     lib_dir = os.path.dirname(os.path.realpath(__file__))
-    bin_dir = lib_dir + "/../../../bin"
+    bin_dir = lib_dir + "/../../../../bin"
     desktop_entry_path = os.path.expanduser("~")+'/.local/share/applications/Juice-scm-egse.desktop'
     if not os.path.exists(desktop_entry_path):
         with open(desktop_entry_path,'w') as d:
