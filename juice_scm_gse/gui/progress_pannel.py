@@ -11,9 +11,9 @@ class ProgressPannel(QWidget):
         self.setWindowFlag(Qt.WindowCloseButtonHint, False)
 
     def update_progress(self,channel_name:str,channel_progress, step:str, global_progress:float,step_detail:str, step_progress:float):
-        self.ui.channel_name.setText(channel_name)
+        self.ui.channel_name.setText(f"Current chanel: {channel_name}")
         self.ui.channel_progress.setValue(int(channel_progress*100))
-        self.ui.step_name.setText(step)
+        self.ui.step_name.setText(f"Current step: {step}")
         self.ui.global_progress.setValue(int(global_progress*100))
         self.ui.step_detail.setText(step_detail)
         self.ui.step_progress.setValue(int(step_progress*100))

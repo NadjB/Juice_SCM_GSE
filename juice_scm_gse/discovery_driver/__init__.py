@@ -73,23 +73,24 @@ def do_psd(disco: Disco_Driver,progress_func, psd_output_dir, psd_snapshots_coun
     mkdir(psd_output_dir)
     snapshot_asic_out = []
     sampling_freq_chx = int()
-    progress_func("psd",0., 0.)
+    progress_func("psd",0.,"", 0.)
     for f in psd_sampling_freq:
         for step in range(psd_snapshots_count):
-            progress_func("psd",0.,float(step)/float(psd_snapshots_count))
+            progress_func("psd",0.,f"Current snapshot {step}/{psd_snapshots_count}",float(step)/float(psd_snapshots_count))
             res = disco.analog_in_read(ch1=False, ch2=True, frequency=f,
                                        samplesCount=disco.max_sampling_buffer)
             sampling_freq_chx = res[1]
             snapshot_asic_out.append(res[0][0])
 
-        progress_func("psd analysis", 0., 0.)
+        progress_func("psd analysis", 0.,"", 0.)
         for i in range(len(snapshot_asic_out)):
-            progress_func("psd analysis", 0., float(i)/float(len(snapshot_asic_out)))
-            np.savetxt(psd_output_dir + f"/snapshot_psd_{f}Hz_{i}_asic_out.csv", snapshot_asic_out[i])
+            progress_func("psd analysis", 0., f"Saving snapshot {i}/{len(snapshot_asic_out)}", float(i)/float(len(snapshot_asic_out)))
+            np.savetxt(psd_output_dir + f"/snapshot_psd_{f}Hz_{i}_asic_out.csv.gz", snapshot_asic_out[i])
         freq_ch1, psd = noise.psd(snapshot_asic_out, sampling_freq_chx, window=True, removeMean=True)
-        progress_func("psd analysis", 0., 1.)
+        progress_func("psd analysis", 0.,"", 1.)
         df = pds.DataFrame(data={"PSD_ASIC_OUTPUT": psd}, index=freq_ch1)
-        df.to_csv(psd_output_dir + f"/psd_{f}Hz_.csv")
+        df.to_csv(psd_output_dir + f"/psd_{f}Hz.csv.gz")
+
 
 @DiscoCommand
 def do_dynamic_tf(disco: Disco_Driver,progress_func, d_tf_output_dir, d_tf_frequencies=np.logspace(0,6,num=200), **kwargs):
@@ -97,10 +98,10 @@ def do_dynamic_tf(disco: Disco_Driver,progress_func, d_tf_output_dir, d_tf_frequ
     tf_g = []
     tf_phi = []
     tf_f = []
-    progress_func("TF",0., 0.)
+    progress_func("TF",0.,"", 0.)
     i = 0.
     for f in d_tf_frequencies:
-        progress_func("TF", 0., i/len(d_tf_frequencies))
+        progress_func("TF", 0., f"Current frequency {f:.1f}Hz", i/len(d_tf_frequencies))
         i+=1.
         disco.analog_out_gen(frequency=f, shape='Sine', channel=0, amplitude=2.,offset=2.5)
         time.sleep(.3)
@@ -109,7 +110,7 @@ def do_dynamic_tf(disco: Disco_Driver,progress_func, d_tf_output_dir, d_tf_frequ
         data = pds.DataFrame(data={"input": res[0][0],
                                    "output": res[0][1]}, index=np.arange(0., disco.max_sampling_buffer/real_fs,
                                                                          1. / real_fs))
-        data.to_csv(d_tf_output_dir + f"/dynamic_tf_snapshot_{f}Hz.csv")
+        data.to_csv(d_tf_output_dir + f"/dynamic_tf_snapshot_{f}Hz.csv.gz")
 
         window = np.hanning(len(res[0][0]))
         in_spect = fft.fft(waveform=res[0][0], sampling_frequency=real_fs, window=window, remove_mean=True)
@@ -122,10 +123,12 @@ def do_dynamic_tf(disco: Disco_Driver,progress_func, d_tf_output_dir, d_tf_frequ
             tf_phi.append(out_spect["phi"][peak] - in_spect["phi"][peak])
             tf_g.append(g)
             tf_f.append(f)
-        progress_func("TF", 0., i/len(d_tf_frequencies))
+
+    progress_func("TF done!", 0., "", 1.)
     tf = pds.DataFrame(data={"G(dB)":tf_g,"Phi(rad)":tf_phi},index=tf_f)
-    tf.to_csv(d_tf_output_dir + f"/dynamic_tf.csv")
+    tf.to_csv(d_tf_output_dir + f"/dynamic_tf.csv.gz")
     disco.analog_out_disable(channel=0)
+
 
 @DiscoCommand
 def do_static_tf(disco: Disco_Driver,progress_func, s_tf_output_dir,s_tf_amplitude=.5,s_tf_steps=100, **kwargs):
@@ -134,11 +137,11 @@ def do_static_tf(disco: Disco_Driver,progress_func, s_tf_output_dir,s_tf_amplitu
     tf_vout = []
     v_min = 2.5-s_tf_amplitude
     v_max = 2.5+s_tf_amplitude
-    progress_func("Static TF",0., 0.)
+    progress_func("Static TF",0., "", 0.)
     input_range = np.arange(v_min, v_max, (v_max-v_min)/s_tf_steps)
     i = 0.
     for step in input_range:
-        progress_func("Static TF", 0., i/len(input_range))
+        progress_func("Static TF", 0., f"Current voltage = {step:.3f}V", i/len(input_range))
         i+=1.
         disco.analog_out_gen(shape='DC', channel=0,offset=step)
         time.sleep(.3)
@@ -147,13 +150,14 @@ def do_static_tf(disco: Disco_Driver,progress_func, s_tf_output_dir,s_tf_amplitu
         data = pds.DataFrame(data={"input": res[0][0],
                                    "output": res[0][1]}, index=np.arange(0., disco.max_sampling_buffer / real_fs,
                                                                          1. / real_fs))
-        data.to_csv(s_tf_output_dir + f"/static_tf_snapshot_{step}V.csv")
+        data.to_csv(s_tf_output_dir + f"/static_tf_snapshot_{step}V.csv.gz")
 
         tf_vin.append(np.mean(res[0][0]))
         tf_vout.append(np.mean(res[0][1]))
-        progress_func("Static TF", 0., i/len(input_range))
+
+    progress_func("Static TF done!", 0., "",1.)
     tf = pds.DataFrame(data={"Vout": tf_vout}, index=tf_vin)
-    tf.to_csv(s_tf_output_dir + f"/static_tf.csv")
+    tf.to_csv(s_tf_output_dir + f"/static_tf.csv.gz")
     disco.analog_out_disable(channel=0)
 
 
@@ -175,13 +179,13 @@ def do_measurements(disco, progress_func, **kwargs):
         turn_on_psu(disco)
         time.sleep(2.)
         log.info("start " + measurement.__name__)
-        progress_func('', global_progress, 0.)
-        measurement(disco,progress_func=lambda step,_,step_progress: progress_func(step=step, global_progress=global_progress, step_progress=step_progress), **kwargs)
+        progress_func('', global_progress,"", 0.)
+        measurement(disco,progress_func=lambda step,_,step_detail,step_progress: progress_func(step=step, global_progress=global_progress,step_detail=step_detail, step_progress=step_progress), **kwargs)
         log.info("turn OFF PSU")
         turn_off_psu(disco)
         time.sleep(2.)
         global_progress+=1./3.
-    progress_func('Done!', 1, 1.)
+    progress_func('Done!', 1,'', 1.)
 
 
 def process_cmd(cmd_dict, discos, progress_func):
@@ -213,11 +217,12 @@ def parse_cmd(cmd, discos, progress_func):
     return json.dumps(cmd)
 
 
-def udpate_progress(progress_sock:zmq.Socket, step:str, global_progress:float, step_progress:float):
+def udpate_progress(progress_sock:zmq.Socket, step:str, global_progress:float,step_detail:str, step_progress:float):
     progress_sock.send_json(json.dumps(
         {
             "step":step,
             "global_progress":global_progress,
+            "step_detail":step_detail,
             "step_progress":step_progress
         }
     ))
@@ -227,7 +232,7 @@ def cmd_loop(discos):
     push_sock, pull_sock, progress_sock = setup_ipc()
     while True:
         cmd = json.loads(pull_sock.recv_json())
-        push_sock.send_json(parse_cmd(cmd, discos,lambda step, global_progress, step_progress: udpate_progress(progress_sock,step,global_progress,step_progress)))
+        push_sock.send_json(parse_cmd(cmd, discos,lambda step, global_progress, step_detail, step_progress: udpate_progress(progress_sock, step, global_progress, step_detail, step_progress)))
 
 
 def turn_all_off(discos:Dict[str,Disco_Driver]):

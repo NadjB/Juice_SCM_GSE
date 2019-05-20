@@ -21,6 +21,18 @@ import psutil
 import logging as log
 
 
+desktop_entry="""[Desktop Entry]
+Version=1.0
+Name=JUICE-SCM-EGSE
+Comment=JUICE SCM EGSE
+Exec={exec}
+Icon={icon}
+Path={path}
+Terminal=false
+Type=Application
+StartupNotify=true
+Categories=Utility;Application;"""
+
 class TemperaturesWorker(QThread):
     updateTemperatures = Signal(float, float, float)
 
@@ -162,6 +174,7 @@ class DiscoveryWorker(QObject):
         self.disco_process = None
         self.disco_process_started = False
         self.current_channel = ""
+        self.channel_progress = 0.
         self.start()
 
     def __del__(self):
@@ -217,15 +230,21 @@ class DiscoveryWorker(QObject):
     def _progress(self):
         try:
             resp = json.loads(self.progress_sock.recv_json(flags=zmq.NOBLOCK))
-            self.progress_update.emit(self.current_channel,0., resp["step"],resp["global_progress"],"",resp["step_progress"])
+            self.progress_update.emit(self.current_channel,self.channel_progress, resp["step"],resp["global_progress"],resp["step_detail"],resp["step_progress"])
         except zmq.ZMQError:
             pass
 
     def Launch_Measurements(self):
         self.start()
         now = str(datetime.now())
+        i = 0.
+        send_mail(server=config.mail_server.get(), sender="juicebot@lpp.polytechnique.fr",
+                  recipients=config.mail_recipients.get(), subject="Starting measurement", html_body="",
+                  username=config.mail_login.get(), password=config.mail_password.get(), port=465, use_tls=True)
         for channel in ['CHX', 'CHY', 'CHZ']:
             self.current_channel = channel
+            self.channel_progress = i/3.
+            i += 1.
             log.info(f"Starting measurements on {channel}")
             kwargs = dict(psd_output_dir=config.global_workdir.get() + f'/run-{now}/{channel}/psd',
                           psd_snapshots_count=int(config.psd_snapshots_count.get()),
@@ -352,6 +371,12 @@ def main(args=sys.argv):
 
 
 if __name__ == "__main__":
+    lib_dir = os.path.dirname(os.path.realpath(__file__))
+    bin_dir = lib_dir + "/../../../bin"
+    desktop_entry_path = os.path.expanduser("~")+'/.local/share/applications/Juice-scm-egse.desktop'
+    if not os.path.exists(desktop_entry_path):
+        with open(desktop_entry_path,'w') as d:
+            d.write(desktop_entry.format(exec=bin_dir+"/Juice_SCM_GSE",icon="juice-scm-egse.svg",path=bin_dir))
     mkdir(config.log_dir())
     log.basicConfig(filename=f'{config.log_dir()}/gui-{datetime.now()}.log', format='%(asctime)s - %(message)s',
                     level=log.INFO)

@@ -15,6 +15,9 @@ setup(
     url='https://github.com/jeandet/Juice_SCM_GSE',
     packages=['juice_scm_gse', 'juice_scm_gse.gui', 'juice_scm_gse.utils', 'juice_scm_gse.config', 'juice_scm_gse.analysis', 'juice_scm_gse.arduino_monitor', 'juice_scm_gse.discovery_driver'],
 #    package_data={'juice_scm_gse.images': ['*.png']},
+    data_files=[
+        ('share/icons/hicolor/scalable/apps', ['juice-scm-egse.svg'])
+      ],
     entry_points={
         'console_scripts': [
             'Juice_SCM_GSE=juice_scm_gse.app:main',
