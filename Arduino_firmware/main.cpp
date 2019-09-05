@@ -28,55 +28,6 @@ constexpr auto OUT2_NINV_CHX = A4;
 constexpr auto OUT2_NINV_CHY = A9;
 constexpr auto OUT2_NINV_CHZ = A14;
 
-/*
-constexpr uint8_t INA_CHX = 0x40;
-constexpr uint8_t INA_CHY = 0x44;
-constexpr uint8_t INA_CHZ = 0x41;
-
-constexpr auto TempA           = LTC2983::Channel::CH4;
-constexpr auto TempC           = LTC2983::Channel::CH6;
-constexpr auto TempB           = LTC2983::Channel::CH8;
-const LTC2983::Channel Temp[3] = {TempA, TempB, TempC};*/
-
-/*
-template<uint8_t RST_pin, uint8_t CS_pin> struct SPI_dev_t                  //Creat a template of SPI_dev with 2 8bits unsigned int
-{
-  template<int PIN> void _set_pin(bool state)
-  {
-    if constexpr(PIN != 0xff)                                               //If the PIN exist
-    {
-      if(state) { digitalWrite(PIN, HIGH); }                                //set it to the desired "state"
-      else
-      {
-          digitalWrite(PIN, LOW);
-      }
-    }
-  }
-  void setup()
-  {
-    SPI.begin();
-    SPI.setClockDivider(SPI_CLOCK_DIV2);                                    //SPI Communication frequency at 8MHz (16MHz/2)
-    SPI.setBitOrder(MSBFIRST);
-    SPI.setDataMode(SPI_MODE2);                                             //For AD7490BRUZ CLK default is at 1, Get data at falling edge, Send at Rising
-    if constexpr(CS_pin != 0xff) pinMode(CS_pin, OUTPUT);                   //Setup CS Pin
-    if constexpr(RST_pin != 0xff) pinMode(RST_pin, OUTPUT);                 //Setup RST Pin
-  }
-  void reset(bool rst) { _set_pin<RST_pin>(rst); }
-  void select(bool select) { _set_pin<CS_pin>(!select); }
-  uint8_t write(const uint8_t val) const { return SPI.transfer(val); }
-  uint16_t write(const uint16_t val) const { return SPI.transfer16(val); }
-};
-
-static Ina226<500000, 50> currentMonitor{};
-using SPI_dev = SPI_dev_t<0xff, 23>;                                         //Setup SPI with CS_pin an pin 23 (PWM 10), RSt_pin as NULL
-static Ltc2983<SPI_dev> ltc2983(SPI_dev{});
-
-*/
-
-/*void communicateADC()
-{
-
-}*/
 
 void setup()
 {
@@ -96,35 +47,6 @@ void setup()
   SPI.transfer16(0b1011101100000000);                                       //send the AD7490 Control register ==> Checked & OK
   //delay(100);
   digitalWrite(CS_ADC, HIGH);                                               // take the SS pin high to de-select the chip
-
-
-  /*
-  for(auto ina : {INA_CHX, INA_CHY, INA_CHZ})
-  {
-    currentMonitor.setup(ina, INA226::OperatingMode::BothContinuous,
-                         INA226::ConvTime::cnv_140us,
-                         INA226::ConvTime::cnv_140us, INA226::AvgNum::avg_16);
-  }
-
-  ltc2983.setup();
-
-  for(const auto ch :
-      {LTC2983::Channel::CH4, LTC2983::Channel::CH6, LTC2983::Channel::CH8})
-  {
-    ltc2983.configure_RTD(ch, LTC2983::SensorType::PT_1000,
-                          LTC2983::Channel::CH2,
-                          LTC2983::ExcitationCurrent::Cur250uA, 3500000,
-                          LTC2983::MeasurementMode::TwoWires,
-                          LTC2983::ExcitationMode::GroundInternal,
-                          LTC2983::RTDCurve::EuropeanStandard);
-    delay(10);
-  }
-
-  ltc2983.configure_MultipleConv(
-      {LTC2983::Channel::CH4, LTC2983::Channel::CH6, LTC2983::Channel::CH8});
-  delay(200);
-  ltc2983.start_Conv(LTC2983::Channel::Multiple);
-  */
 
   std::cout << "# Found " << 3 << " channels" << std::endl;
   std::cout << "V_BIAS_LNA_CHX\t"
@@ -173,32 +95,6 @@ void loop()
   }
   digitalWrite(CS_ADC, HIGH);                                               // wite LTC CS pin high to stop ADC from transmitting
 
-  /*
-  for(auto ina : {INA_CHX, INA_CHY, INA_CHZ})
-  {
-    std::cout << currentMonitor.microAmps(ina) << "\t";
-  }
-  for(auto ina : {INA_CHX, INA_CHY, INA_CHZ})
-  {
-    std::cout << currentMonitor.milliVolts(ina) << "\t";
-  }
-  if(measure_temp)
-  {
-    while(0x40 != ltc2983.status())
-      ;
-    for(auto i : {0, 1, 2})
-    {
-      temperatures[i] = ltc2983.temperature(Temp[i]);
-    }
-    ltc2983.start_Conv(LTC2983::Channel::Multiple);
-  }
-
-  for(auto i : {0, 1, 2})
-  {
-    std::cout << temperatures[i] << "\t";
-  }
-
-  std::cout << frame++ << std::endl;*/
   std::cout << testAdcConv << std::endl;
   digitalWrite(LED_BUILTIN, LOW);
   delay(1);
