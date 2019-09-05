@@ -73,16 +73,10 @@ static Ltc2983<SPI_dev> ltc2983(SPI_dev{});
 
 */
 
-void setupADC() {
-  // take the SS pin low to select the chip:
-  digitalWrite(CS_ADC, LOW);
-  delay(100);
-  //  send the control :
-  SPI.transfer(0b101110110000);                                             //AD7490 Control register
-  delay(100);
-  // take the SS pin high to de-select the chip:
-  digitalWrite(CS_ADC, HIGH);
-}
+/*void communicateADC()
+{
+
+}*/
 
 void setup()
 {
@@ -90,12 +84,18 @@ void setup()
   Serial.begin(2000000);
   delay(1000);
   
+  pinMode(CS_ADC, OUTPUT);                                                  // initalize the  data ready and chip select pins:
+  digitalWrite(CS_ADC, HIGH);
+
   SPI.begin();
-  SPI.setClockDivider(SPI_CLOCK_DIV2);                                      //SPI Communication frequency at 8MHz (16MHz/2)
+  SPI.setClockDivider(SPI_CLOCK_DIV2);                                      //SPI Communication frequency at 8MHz (16MHz/2) ==> Checked & OK
   SPI.setBitOrder(MSBFIRST);
   SPI.setDataMode(SPI_MODE2);                                               //For AD7490BRUZ CLK default is at 1, Get data at falling edge, Send at Rising
-  pinMode(CS_ADC, OUTPUT);                                                  // initalize the  data ready and chip select pins:
-  setupADC();
+
+  digitalWrite(CS_ADC, LOW);                                                // take the SS pin low to select the chip:
+  SPI.transfer16(0b1011101100000000);                                       //send the AD7490 Control register ==> Checked & OK
+  //delay(100);
+  digitalWrite(CS_ADC, HIGH);                                               // take the SS pin high to de-select the chip
 
 
   /*
@@ -149,27 +149,29 @@ void loop()
 {
 
   digitalWrite(LED_BUILTIN, HIGH);
-  for(auto i : {V_BIAS_LNA_CHX, V_BIAS_LNA_CHY, V_BIAS_LNA_CHZ,
+  for(auto i : {V_BIAS_LNA_CHX, V_BIAS_LNA_CHY, V_BIAS_LNA_CHZ,             //for each desired tension
                 M_CHX, M_CHY, M_CHZ,
                 VDD_CHX, VDD_CHY, VDD_CHZ,
                 OUT2_INV_CHX, OUT2_INV_CHY, OUT2_INV_CHZ,
                 OUT2_NINV_CHX, OUT2_NINV_CHY, OUT2_NINV_CHZ})
   {
-    int sensorValue = analogRead(i);
+    int sensorValue = analogRead(i);                                        //Checkt he corresponding pin
     std::cout << sensorValue << "\t";
   }
 
 
   int testAdcConv = 0;
+  digitalWrite(CS_ADC, LOW);                                                // write the CS_ADC pin low to initiate ADC sample and data transmit
 
   for(auto i : {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15})
   {
-    uint16_t adcValue = SPI.transfer16(0b0);
+    uint16_t adcValue = SPI.transfer16(0);                                  //read the value sent in 16b
     if (i == adcValue >> 12)
     std::cout << adcValue << "\t";
 
-    if (i == adcValue >> 12) {testAdcConv++;}
+    if (i == adcValue >> 12) {testAdcConv++;}                               //to check the ADC channel (sent on the first 3 bits)
   }
+  digitalWrite(CS_ADC, HIGH);                                               // wite LTC CS pin high to stop ADC from transmitting
 
   /*
   for(auto ina : {INA_CHX, INA_CHY, INA_CHZ})
