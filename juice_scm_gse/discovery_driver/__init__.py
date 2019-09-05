@@ -23,7 +23,7 @@ class DiscoCommand:
     def __init__(self, func):
         functools.update_wrapper(self, func)
         self.func = func
-        commands[func.__name__] = func
+        commands[func.__name__] = func          #Creat a dictionnary of the commands with their names as keys
 
     def make_cmd(self, channel, **kwargs):
         payload = {
@@ -43,7 +43,7 @@ class Disco_Driver(Discovery):
         super().__init__(card=card)
         self.digital_io_output_enable(0x0001)
 
-    def turn_on(self):
+    def turn_on(self):                          #to turn on & off the asic
         self.digital_io = 1
 
     def turn_off(self):

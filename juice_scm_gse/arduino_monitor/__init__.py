@@ -12,7 +12,7 @@ def setup_ipc(port=9990):
     return sock
 
 
-def setup_serial(socket, port_regex='/dev/ttyACM[0-1]', baudrate=2000000):
+def setup_serial(socket, port_regex='/dev/ttyACM[0-1]', baudrate=2000000):                                              #Get the Arduino data via the serial communication
     socket.send(f"Status disconnected".encode())
     while True:
         print("try to connect")
@@ -43,8 +43,9 @@ def main():
     ser = setup_serial(socket)
     if ser.is_open:
         path = cfg.global_workdir.get()+"/monitor"
-        mkdir(path)
-        fname = f"{path}/all-{str(datetime.datetime.now())}.txt"
+        mkdir(path)                                                                                                     #create a "monitor" file in the working directory
+        fname = f"{path}/all-{str(datetime.datetime.now())}.txt"                                                        #create a file with the current date to dump the data
+        print(fname)
         with open(fname, 'w') as out:
             reset_and_flush(ser)
             out.write(ser.readline().decode())  # comment line
@@ -52,17 +53,22 @@ def main():
             last_publish = time.time()
             while True:
                 try:
-                    line = ser.readline().decode()
+                    line = ser.readline().decode()                                                                      #get and decode the data on the serial communication
                     out.write(str(datetime.datetime.now()) + '\t' + line)
                     now = time.time()
-                    if (now - last_publish) >= 1.:
+                    if (now - last_publish) >= 1.:                                                                      #Whait 1 second because temp measurments are slow
                         last_publish = now
                         values = line.split('\t')
-                        tempA, tempB, tempC = float(values[-4]), float(values[-3]), float(values[-2])
-                        socket.send(f"Temperatures {now},{tempA},{tempB},{tempC}".encode())
+                        #tempA, tempB, tempC = float(values[-4]), float(values[-3]), float(values[-2])
+                        #tempA, tempB, tempC = float(10), float(11), float(12)
+                        #socket.send(f"Temperatures {now},{tempA},{tempB},{tempC}".encode())
+
                         message = f"Voltages {now}"
-                        for v in values[:-4]:
+                        for v in values[:-1]:                                                                           #values[:-1] exept the last one
                             message += f",{float(v)}"
+
+                        #print(values[0])
+                        #print(message)
                         socket.send(message.encode())
 
                 except serial.serialutil.SerialException:

@@ -5,18 +5,30 @@
 #include <ArduinoSTL.h>
 #include <SPI.h>
 
-constexpr auto V_BIAS_LNA_CHX = A6;
-constexpr auto V_BIAS_LNA_CHY = A3;
-constexpr auto V_BIAS_LNA_CHZ = A0;
 
-constexpr auto M_CHX = A7;
-constexpr auto M_CHY = A4;
-constexpr auto M_CHZ = A1;
+//constexpr auto CS_ADC = 10;
 
-constexpr auto VDD_CHX = A8;
-constexpr auto VDD_CHY = A5;
-constexpr auto VDD_CHZ = A2;
+constexpr auto V_BIAS_LNA_CHX = A0;
+constexpr auto V_BIAS_LNA_CHY = A5;
+constexpr auto V_BIAS_LNA_CHZ = A10;
 
+constexpr auto M_CHX = A1;
+constexpr auto M_CHY = A6;
+constexpr auto M_CHZ = A11;
+
+constexpr auto VDD_CHX = A2;
+constexpr auto VDD_CHY = A7;
+constexpr auto VDD_CHZ = A12;
+
+constexpr auto OUT2_INV_CHX = A3;
+constexpr auto OUT2_INV_CHY = A8;
+constexpr auto OUT2_INV_CHZ = A13;
+
+constexpr auto OUT2_NINV_CHX = A4;
+constexpr auto OUT2_NINV_CHY = A9;
+constexpr auto OUT2_NINV_CHZ = A14;
+
+/*
 constexpr uint8_t INA_CHX = 0x40;
 constexpr uint8_t INA_CHY = 0x44;
 constexpr uint8_t INA_CHZ = 0x41;
@@ -24,29 +36,30 @@ constexpr uint8_t INA_CHZ = 0x41;
 constexpr auto TempA           = LTC2983::Channel::CH4;
 constexpr auto TempC           = LTC2983::Channel::CH6;
 constexpr auto TempB           = LTC2983::Channel::CH8;
-const LTC2983::Channel Temp[3] = {TempA, TempB, TempC};
+const LTC2983::Channel Temp[3] = {TempA, TempB, TempC};*/
 
-template<uint8_t RST_pin, uint8_t CS_pin> struct SPI_dev_t
+/*
+template<uint8_t RST_pin, uint8_t CS_pin> struct SPI_dev_t                  //Creat a template of SPI_dev with 2 8bits unsigned int
 {
   template<int PIN> void _set_pin(bool state)
   {
-    if constexpr(PIN != 0xff)
+    if constexpr(PIN != 0xff)                                               //If the PIN exist
     {
-      if(state) { digitalWrite(PIN, HIGH); }
+      if(state) { digitalWrite(PIN, HIGH); }                                //set it to the desired "state"
       else
       {
-        digitalWrite(PIN, LOW);
+          digitalWrite(PIN, LOW);
       }
     }
   }
   void setup()
   {
     SPI.begin();
-    SPI.setClockDivider(SPI_CLOCK_DIV4);
+    SPI.setClockDivider(SPI_CLOCK_DIV2);                                    //SPI Communication frequency at 8MHz (16MHz/2)
     SPI.setBitOrder(MSBFIRST);
-    SPI.setDataMode(SPI_MODE0);
-    if constexpr(CS_pin != 0xff) pinMode(CS_pin, OUTPUT);
-    if constexpr(RST_pin != 0xff) pinMode(RST_pin, OUTPUT);
+    SPI.setDataMode(SPI_MODE2);                                             //For AD7490BRUZ CLK default is at 1, Get data at falling edge, Send at Rising
+    if constexpr(CS_pin != 0xff) pinMode(CS_pin, OUTPUT);                   //Setup CS Pin
+    if constexpr(RST_pin != 0xff) pinMode(RST_pin, OUTPUT);                 //Setup RST Pin
   }
   void reset(bool rst) { _set_pin<RST_pin>(rst); }
   void select(bool select) { _set_pin<CS_pin>(!select); }
@@ -55,21 +68,47 @@ template<uint8_t RST_pin, uint8_t CS_pin> struct SPI_dev_t
 };
 
 static Ina226<500000, 50> currentMonitor{};
-using SPI_dev = SPI_dev_t<0xff, 2>;
+using SPI_dev = SPI_dev_t<0xff, 23>;                                         //Setup SPI with CS_pin an pin 23 (PWM 10), RSt_pin as NULL
 static Ltc2983<SPI_dev> ltc2983(SPI_dev{});
+
+*/
+/*
+void convAD(int address, int value) {
+  // take the SS pin low to select the chip:
+  digitalWrite(CS_ADC, LOW);
+  delay(100);
+  //  send in the address and value via SPI:
+  SPI.transfer(address);
+  SPI.transfer(value);
+  delay(100);
+  // take the SS pin high to de-select the chip:
+  digitalWrite(CS_ADC, HIGH);
+}*/
 
 void setup()
 {
   pinMode(LED_BUILTIN, OUTPUT);
   Serial.begin(2000000);
   delay(1000);
+
+  /*
+  SPI.begin();
+  SPI.setClockDivider(SPI_CLOCK_DIV2);                                      //SPI Communication frequency at 8MHz (16MHz/2)
+  SPI.setBitOrder(MSBFIRST);
+  SPI.setDataMode(SPI_MODE2);                                               //For AD7490BRUZ CLK default is at 1, Get data at falling edge, Send at Rising
+  pinMode(CS_ADC, OUTPUT);                                                  // initalize the  data ready and chip select pins:
+*/
+
+  /*
   for(auto ina : {INA_CHX, INA_CHY, INA_CHZ})
   {
     currentMonitor.setup(ina, INA226::OperatingMode::BothContinuous,
                          INA226::ConvTime::cnv_140us,
                          INA226::ConvTime::cnv_140us, INA226::AvgNum::avg_16);
   }
+
   ltc2983.setup();
+
   for(const auto ch :
       {LTC2983::Channel::CH4, LTC2983::Channel::CH6, LTC2983::Channel::CH8})
   {
@@ -81,11 +120,14 @@ void setup()
                           LTC2983::RTDCurve::EuropeanStandard);
     delay(10);
   }
+
   ltc2983.configure_MultipleConv(
       {LTC2983::Channel::CH4, LTC2983::Channel::CH6, LTC2983::Channel::CH8});
   delay(200);
   ltc2983.start_Conv(LTC2983::Channel::Multiple);
-  std::cout << "# Found " << 3 << " ina226" << std::endl;
+  */
+
+  std::cout << "# Found " << 3 << " channels" << std::endl;
   std::cout << "V_BIAS_LNA_CHX\t"
             << "V_BIAS_LNA_CHY\t"
             << "V_BIAS_LNA_CHZ\t"
@@ -95,31 +137,38 @@ void setup()
             << "VDD_CHX\t"
             << "VDD_CHY\t"
             << "VDD_CHZ\t"
-            << "I_CHX\t"
-            << "I_CHY\t"
-            << "I_CHZ\t"
-            << "V_CHX\t"
-            << "V_CHY\t"
-            << "V_CHZ\t"
-            << "TempA\t"
-            << "TempB\t"
-            << "TempC\t"
+            << "OUT2_INV_CHX\t"
+            << "OUT2_INV_CHY\t"
+            << "OUT2_INV_CHZ\t"
+            << "OUT2_NINV_CHX\t"
+            << "OUT2_NINV_CHY\t"
+            << "OUT2_NINV_CHZ\t"
             << "FrameNumber" << std::endl;
 }
 
 void loop()
 {
-  static uint32_t frame         = 0;
-  static double temperatures[3] = {0., 0., 0.};
-  bool measure_temp             = false;
+
   digitalWrite(LED_BUILTIN, HIGH);
-  if(frame % 100 == 0) { measure_temp = true; }
-  for(auto i : {V_BIAS_LNA_CHX, V_BIAS_LNA_CHY, V_BIAS_LNA_CHZ, M_CHX, M_CHY,
-                M_CHZ, VDD_CHX, VDD_CHY, VDD_CHZ})
+
+  for(auto i : {V_BIAS_LNA_CHX, V_BIAS_LNA_CHY, V_BIAS_LNA_CHZ,
+                M_CHX, M_CHY, M_CHZ,
+                VDD_CHX, VDD_CHY, VDD_CHZ,
+                OUT2_INV_CHX, OUT2_INV_CHY, OUT2_INV_CHZ,
+                OUT2_NINV_CHX, OUT2_NINV_CHY, OUT2_NINV_CHZ})
   {
     int sensorValue = analogRead(i);
     std::cout << sensorValue << "\t";
   }
+  /*//test apres surpretion de , OUT2_NINV_CHZ
+
+  int test = 666;
+  std::cout << test << "\t";
+
+  //fin de test
+*/
+
+  /*
   for(auto ina : {INA_CHX, INA_CHY, INA_CHZ})
   {
     std::cout << currentMonitor.microAmps(ina) << "\t";
@@ -144,7 +193,8 @@ void loop()
     std::cout << temperatures[i] << "\t";
   }
 
-  std::cout << frame++ << std::endl;
+  std::cout << frame++ << std::endl;*/
+  std::cout << std::endl;
   digitalWrite(LED_BUILTIN, LOW);
   delay(1);
 }
