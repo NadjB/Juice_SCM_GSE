@@ -6,7 +6,7 @@
 #include <SPI.h>
 
 
-//constexpr auto CS_ADC = 10;
+constexpr auto CS_ADC = 10;
 
 constexpr auto V_BIAS_LNA_CHX = A0;
 constexpr auto V_BIAS_LNA_CHY = A5;
@@ -72,32 +72,31 @@ using SPI_dev = SPI_dev_t<0xff, 23>;                                         //S
 static Ltc2983<SPI_dev> ltc2983(SPI_dev{});
 
 */
-/*
-void convAD(int address, int value) {
+
+void setupADC() {
   // take the SS pin low to select the chip:
   digitalWrite(CS_ADC, LOW);
   delay(100);
-  //  send in the address and value via SPI:
-  SPI.transfer(address);
-  SPI.transfer(value);
+  //  send the control :
+  SPI.transfer(0b101110110000);                                             //AD7490 Control register
   delay(100);
   // take the SS pin high to de-select the chip:
   digitalWrite(CS_ADC, HIGH);
-}*/
+}
 
 void setup()
 {
   pinMode(LED_BUILTIN, OUTPUT);
   Serial.begin(2000000);
   delay(1000);
-
-  /*
+  
   SPI.begin();
   SPI.setClockDivider(SPI_CLOCK_DIV2);                                      //SPI Communication frequency at 8MHz (16MHz/2)
   SPI.setBitOrder(MSBFIRST);
   SPI.setDataMode(SPI_MODE2);                                               //For AD7490BRUZ CLK default is at 1, Get data at falling edge, Send at Rising
   pinMode(CS_ADC, OUTPUT);                                                  // initalize the  data ready and chip select pins:
-*/
+  setupADC();
+
 
   /*
   for(auto ina : {INA_CHX, INA_CHY, INA_CHZ})
@@ -150,7 +149,6 @@ void loop()
 {
 
   digitalWrite(LED_BUILTIN, HIGH);
-
   for(auto i : {V_BIAS_LNA_CHX, V_BIAS_LNA_CHY, V_BIAS_LNA_CHZ,
                 M_CHX, M_CHY, M_CHZ,
                 VDD_CHX, VDD_CHY, VDD_CHZ,
@@ -160,13 +158,18 @@ void loop()
     int sensorValue = analogRead(i);
     std::cout << sensorValue << "\t";
   }
-  /*//test apres surpretion de , OUT2_NINV_CHZ
 
-  int test = 666;
-  std::cout << test << "\t";
 
-  //fin de test
-*/
+  int testAdcConv = 0;
+
+  for(auto i : {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15})
+  {
+    uint16_t adcValue = SPI.transfer16(0b0);
+    if (i == adcValue >> 12)
+    std::cout << adcValue << "\t";
+
+    if (i == adcValue >> 12) {testAdcConv++;}
+  }
 
   /*
   for(auto ina : {INA_CHX, INA_CHY, INA_CHZ})
@@ -194,7 +197,7 @@ void loop()
   }
 
   std::cout << frame++ << std::endl;*/
-  std::cout << std::endl;
+  std::cout << testAdcConv << std::endl;
   digitalWrite(LED_BUILTIN, LOW);
   delay(1);
 }
