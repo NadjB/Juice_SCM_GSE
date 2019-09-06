@@ -83,7 +83,7 @@ void setup()
   pinMode(LED_BUILTIN, OUTPUT);
   Serial.begin(2000000);
   delay(1000);
-  
+
   pinMode(CS_ADC, OUTPUT);                                                  // initalize the  data ready and chip select pins:
   digitalWrite(CS_ADC, HIGH);
 
@@ -127,21 +127,37 @@ void setup()
   */
 
   std::cout << "# Found " << 3 << " channels" << std::endl;
-  std::cout << "V_BIAS_LNA_CHX\t"
-            << "V_BIAS_LNA_CHY\t"
-            << "V_BIAS_LNA_CHZ\t"
+  std::cout << "VDD_CHX\t"
+            << "VDD_CHY\t"
+            << "VDD_CHZ\t"
             << "M_CHX\t"
             << "M_CHY\t"
             << "M_CHZ\t"
-            << "VDD_CHX\t"
-            << "VDD_CHY\t"
-            << "VDD_CHZ\t"
+            << "V_BIAS_LNA_CHX\t"
+            << "V_BIAS_LNA_CHY\t"
+            << "V_BIAS_LNA_CHZ\t"
             << "OUT2_INV_CHX\t"
             << "OUT2_INV_CHY\t"
             << "OUT2_INV_CHZ\t"
             << "OUT2_NINV_CHX\t"
             << "OUT2_NINV_CHY\t"
             << "OUT2_NINV_CHZ\t"
+            << "ADC00_VDD_CHX\t"
+            << "ADC01_VDD_CHY\t"
+            << "ADC02_VDD_CHZ\t"
+            << "ADC03_M_CHX\t"
+            << "ADC04_M_CHY\t"
+            << "ADC05_M_CHZ\t"
+            << "ADC06_V_BIAS_LNA_CHX\t"
+            << "ADC07_V_BIAS_LNA_CHY\t"
+            << "ADC08_V_BIAS_LNA_CHZ\t"
+            << "ADC12_OUT2_NINV_CHX\t"
+            << "ADC13_OUT2_NINV_CHY\t"
+            << "ADC14_OUT2_NINV_CHZ\t"
+            << "ADC09_OUT2_INV_CHX\t"
+            << "ADC10_OUT2_INV_CHY\t"
+            << "ADC11_OUT2_INV_CHZ\t"
+            << "ADC15_DUMMY\t"
             << "FrameNumber" << std::endl;
 }
 
@@ -149,11 +165,11 @@ void loop()
 {
 
   digitalWrite(LED_BUILTIN, HIGH);
-  for(auto i : {V_BIAS_LNA_CHX, V_BIAS_LNA_CHY, V_BIAS_LNA_CHZ,             //for each desired tension
+  for(auto i : {VDD_CHX, VDD_CHY, VDD_CHZ,
                 M_CHX, M_CHY, M_CHZ,
-                VDD_CHX, VDD_CHY, VDD_CHZ,
-                OUT2_INV_CHX, OUT2_INV_CHY, OUT2_INV_CHZ,
-                OUT2_NINV_CHX, OUT2_NINV_CHY, OUT2_NINV_CHZ})
+                V_BIAS_LNA_CHX, V_BIAS_LNA_CHY, V_BIAS_LNA_CHZ,
+                OUT2_NINV_CHX, OUT2_NINV_CHY, OUT2_NINV_CHZ,             //for each desired tension
+                OUT2_INV_CHX, OUT2_INV_CHY, OUT2_INV_CHZ})
   {
     int sensorValue = analogRead(i);                                        //Checkt he corresponding pin
     std::cout << sensorValue << "\t";
@@ -165,12 +181,12 @@ void loop()
 
   for(auto i : {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15})
   {
-    uint16_t adcValue = SPI.transfer16(0);                                  //read the value sent in 16b
-    if (i == adcValue >> 12)
-    std::cout << adcValue << "\t";
-
+    uint16_t adcValue = SPI.transfer16(i);                                  //read the value sent in 16b
     if (i == adcValue >> 12) {testAdcConv++;}                               //to check the ADC channel (sent on the first 3 bits)
+    //std::cout << adcValue << "\t";
+    std::cout << i << "\t";                     //pour test
   }
+
   digitalWrite(CS_ADC, HIGH);                                               // wite LTC CS pin high to stop ADC from transmitting
 
   /*
