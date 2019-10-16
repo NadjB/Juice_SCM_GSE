@@ -8,7 +8,8 @@ import zmq, json
 from datetime import datetime
 from PySide2.QtWidgets import QMainWindow, QApplication
 from PySide2.QtCore import Signal, QThread, Slot, QObject, QMetaObject, QGenericArgument, Qt
-#from juice_scm_gse.discovery_driver import do_measurements, turn_on_psu, turn_off_psu
+from juice_scm_gse.arduino_monitor import alimManagement
+from juice_scm_gse.discovery_driver import do_measurements, turn_on_psu, turn_off_psu
 import numpy as np
 from juice_scm_gse.gui.settings_pannel import SettingsPannel
 from juice_scm_gse.gui.progress_pannel import ProgressPannel
@@ -37,16 +38,33 @@ class VoltagesWorker(QThread):
     updateVoltages = Signal(dict)
     restartDisco = Signal()
 
-    def __init__(self, port=9990):
+    def __init__(self, port=9990, portPair=9991):
         QThread.__init__(self)                                                                                          #Creat a thread
         self.context = zmq.Context()                                                                                    #Initialize ZMQ
         self.sock = self.context.socket(zmq.SUB)                                                                        #Configure it as Subscriber (mode Publish/Subscribe)
         self.sock.connect(f"tcp://localhost:{port}")
         self.sock.setsockopt(zmq.SUBSCRIBE, b"Voltages")                                                                #Subscribe to the topic: Voltages
 
+        self.sockPair = self.context.socket(zmq.PAIR)
+        self.sockPair.connect(f"tcp://localhost:{portPair}")
+        # self.publisher = self.context.socket(zmq.PUB)
+        # self.publisher.bind(f"tcp://*:{portPublisher}")
+        # self.arduino_process = None
+        # self.arduino_process_started = False
+        # self.alimsEnabled = False
+
+    def startAlims(self):
+        message = f"Alims"
+        if self.alimsEnabled:
+            message += f",Disable alims"
+        else:
+            message += f",Enable alims"
+        self.sockPair.send(message.encode())
+
     def __del__(self):
-        del self.sock
-        del self.context
+            del self.sock
+            del self.publisher
+            del self.context
 
     def run(self):
         while True:
@@ -56,11 +74,13 @@ class VoltagesWorker(QThread):
                 values = data.decode().split(',')
                 values = {                                                                                              #??? damn tricky
                     key: float(value) for key, value in zip(
-                        ["V_BIAS_LNA_CHX", "V_BIAS_LNA_CHY", "V_BIAS_LNA_CHZ",
-                         "M_CHX", "M_CHY", "M_CHZ",
-                         "VDD_CHX", "VDD_CHY", "VDD_CHZ",
-                         "OUT2_INV_CHX", "OUT2_INV_CHY", "OUT2_INV_CHZ",
-                         "OUT2_NINV_CHX", "OUT2_NINV_CHY", "OUT2_NINV_CHZ"], values[1:])
+                        ["VDD_CHX", "M_CHX", "V_BIAS_LNA_CHX", "OUT2_NINV_CHX", "OUT2_INV_CHX",
+                         "VDD_CHY", "M_CHY", "V_BIAS_LNA_CHY", "OUT2_NINV_CHY", "OUT2_INV_CHY",
+                         "VDD_CHZ", "M_CHZ", "V_BIAS_LNA_CHZ", "OUT2_NINV_CHZ", "OUT2_INV_CHZ",
+                         "ADC_VDD_CHX", "ADC_M_CHX", "ADC_V_BIAS_LNA_CHX", "ADC_OUT2_NINV_CHX", "ADC_OUT2_INV_CHX",
+                         "ADC_VDD_CHY", "ADC_M_CHY", "ADC_V_BIAS_LNA_CHY", "ADC_OUT2_NINV_CHY", "ADC_OUT2_INV_CHY",
+                         "ADC_VDD_CHZ", "ADC_M_CHZ", "ADC_V_BIAS_LNA_CHZ", "ADC_OUT2_NINV_CHZ", "ADC_OUT2_INV_CHZ"],
+                            values[1:])
                 }
                 self.updateVoltages.emit(values)                                                                        #MAJ Voltages
 
@@ -82,6 +102,7 @@ class ArduinoStatusWorker(QThread):
         self.sock.setsockopt(zmq.SUBSCRIBE, b"Status")
         self.arduino_process = None
         self.arduino_process_started = False
+        self.alimsEnabled = False
 
     def __del__(self):
         del self.sock
@@ -126,6 +147,9 @@ class ArduinoStatusWorker(QThread):
             QThread.msleep(10)
 
 
+
+
+
 class ApplicationWindow(QMainWindow):
     """Main Window"""
     Launch_Measurements = Signal(str)
@@ -137,39 +161,43 @@ class ApplicationWindow(QMainWindow):
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
         self.ui.actionSettings.triggered.connect(self.settings_ui.show)
-        """        self.ui.power_button.clicked.connect(self.turn_on)
-        self.is_on = False
-        self.tempWorker = TemperaturesWorker()
-        self.tempWorker.updateTemperatures.connect(self.updateTemperatures)
-        self.tempWorker.start()
-        self.tempWorker.moveToThread(self.tempWorker)
-"""
+
+
+#        self.ui.power_button.clicked.connect(self.turn_on)
+#        self.is_on = False
+#        self.tempWorker = TemperaturesWorker()
+#        self.tempWorker.updateTemperatures.connect(self.updateTemperatures)
+#        self.tempWorker.start()
+#        self.tempWorker.moveToThread(self.tempWorker)
+
         self.arduinoStatusWorker = ArduinoStatusWorker()
         self.arduinoStatusWorker.updateStatus.connect(self.ui.statusbar.showMessage)
         self.arduinoStatusWorker.start()
         self.arduinoStatusWorker.moveToThread(self.arduinoStatusWorker)
-        """
-        self.already_restarting_disco = False
-        self.discoWorker = DiscoveryWorker()
-        self.ui.Launch_Measurements.clicked.connect(self.start_measurement)
-        self.Launch_Measurements.connect(self.discoWorker.Launch_Measurements)
-        self.ui.Launch_Measurements.clicked.connect(self.progress_pannel.show)
-        self.ui.Launch_Measurements.clicked.connect(partial(self.ui.Launch_Measurements.setDisabled, True))
-        self.ui.Launch_Measurements.clicked.connect(partial(self.ui.power_button.setDisabled, True))
 
-        self.discoWorker.measurementsDone.connect(partial(self.ui.Launch_Measurements.setEnabled, True))
-        self.discoWorker.measurementsDone.connect(partial(self.ui.power_button.setEnabled, True))
-        self.discoWorker.measurementsDone.connect(self.progress_pannel.hide)
-        self.discoWorker.progress_update.connect(self.progress_pannel.update_progress)
-"""
         self.voltagesWorker = VoltagesWorker()
         self.voltagesWorker.updateVoltages.connect(self.updateVoltages)
         self.voltagesWorker.start()
         self.voltagesWorker.moveToThread(self.voltagesWorker)
+        self.ui.power_button.clicked.connect(self.voltagesWorker.startAlims)
+
+        # self.already_restarting_disco = False
+        # self.discoWorker = DiscoveryWorker()
+        # self.ui.Launch_Measurements.clicked.connect(self.start_measurement)
+        # self.Launch_Measurements.connect(self.discoWorker.Launch_Measurements)
+        # self.ui.Launch_Measurements.clicked.connect(self.progress_pannel.show)
+        # self.ui.Launch_Measurements.clicked.connect(partial(self.ui.Launch_Measurements.setDisabled, True))
+        # self.ui.Launch_Measurements.clicked.connect(partial(self.ui.power_button.setDisabled, True))
+        #
+        # self.discoWorker.measurementsDone.connect(partial(self.ui.Launch_Measurements.setEnabled, True))
+        # self.discoWorker.measurementsDone.connect(partial(self.ui.power_button.setEnabled, True))
+        # self.discoWorker.measurementsDone.connect(self.progress_pannel.hide)
+        # self.discoWorker.progress_update.connect(self.progress_pannel.update_progress)
+
 #        self.voltagesWorker.restartDisco.connect(self.restart_disco)
 
     def __del__(self):
-        for thr in [self.arduinoStatusWorker, self.tempWorker, self.voltagesWorker]:
+        for thr in [self.arduinoStatusWorker, self.voltagesWorker]:
             thr.requestInterruption()
             while thr.isRunning():
                 QThread.msleep(10)
@@ -178,12 +206,12 @@ class ApplicationWindow(QMainWindow):
         del self.tempWorker
         del self.voltagesWorker
         self.close()
-        """
-    def updateTemperatures(self, tempA, tempB, tempC):
-        self.ui.tempA_LCD.display(tempA)
-        self.ui.tempB_LCD.display(tempB)
-        self.ui.tempC_LCD.display(tempC)
-"""
+
+#    def updateTemperatures(self, tempA, tempB, tempC):
+#        self.ui.tempA_LCD.display(tempA)
+#        self.ui.tempB_LCD.display(tempB)
+#        self.ui.tempC_LCD.display(tempC)
+
     def updateVoltages(self, values):
         for ch in ["X", "Y", "Z"]:
             self.ui.__dict__[f"CH{ch}_VDD"].display(5. / 1024. * values[f"VDD_CH{ch}"])
@@ -191,6 +219,11 @@ class ApplicationWindow(QMainWindow):
             self.ui.__dict__[f"CH{ch}_M"].display(5. / 1024. * values[f"M_CH{ch}"])
             self.ui.__dict__[f"CH{ch}_OUT2_INV"].display(5. / 1024 * values[f"OUT2_INV_CH{ch}"])
             self.ui.__dict__[f"CH{ch}_OUT2_NINV"].display(5. / 1024 * values[f"OUT2_NINV_CH{ch}"])
+            self.ui.__dict__[f"CH{ch}_VDD_ADC"].display(5. / 4096. * values[f"ADC_VDD_CH{ch}"])
+            self.ui.__dict__[f"CH{ch}_BIAS_ADC"].display(5. / 4096. * values[f"ADC_V_BIAS_LNA_CH{ch}"])
+            self.ui.__dict__[f"CH{ch}_M_ADC"].display(5. / 4096. * values[f"ADC_M_CH{ch}"])
+            self.ui.__dict__[f"CH{ch}_OUT2_INV_ADC"].display(5. / 4096 * values[f"ADC_OUT2_INV_CH{ch}"])
+            self.ui.__dict__[f"CH{ch}_OUT2_NINV_ADC"].display(5. / 4096 * values[f"ADC_OUT2_NINV_CH{ch}"])
 
     def start_measurement(self):
         now = str(datetime.now())

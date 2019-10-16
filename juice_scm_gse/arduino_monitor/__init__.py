@@ -5,14 +5,24 @@ import juice_scm_gse.config as cfg
 from  juice_scm_gse.utils import mkdir
 
 
-def setup_ipc(port=9990):
+def setup_ipc(port=9990, portPair=9991):
     context = zmq.Context()
     sock = context.socket(zmq.PUB)
     sock.bind(f"tcp://*:{port}")
-    return sock
+
+    sockPair = context.socket(zmq.PAIR)
+    sockPair.bind(f"tcp://*:{portPair}")
+    return sock, sockPair
 
 
-def setup_serial(socket, port_regex='/dev/ttyACM[0-1]', baudrate=2000000):                                              #Get the Arduino data via the serial communication
+def alimManagement(sockPair, ser):
+
+    string = sockPair.recv(flags=zmq.NOBLOCK)
+    topic, message = string.split()
+    ser.write(f"{message}".encode())
+
+
+def setup_serial(socket, port_regex='/dev/ttyACM[0-1]', baudrate=2000000):                                             #Get the Arduino data via the serial communication
     socket.send(f"Status disconnected".encode())
     while True:
         print("try to connect")
@@ -39,8 +49,9 @@ def reset_and_flush(ser):
 
 
 def main():
-    socket = setup_ipc()
+    socket, sockPair = setup_ipc()
     ser = setup_serial(socket)
+    nbrIteration = 0
     if ser.is_open:
         path = cfg.global_workdir.get()+"/monitor"
         mkdir(path)                                                                                                     #create a "monitor" file in the working directory
@@ -48,6 +59,7 @@ def main():
         print(fname)
         with open(fname, 'w') as out:
             reset_and_flush(ser)
+            #alimManagement(sockPair, ser)
             out.write(ser.readline().decode())  # comment line
             out.write(ser.readline().decode())  # header columns names
             last_publish = time.time()
@@ -56,18 +68,33 @@ def main():
                     line = ser.readline().decode()                                                                      #get and decode the data on the serial communication
                     out.write(str(datetime.datetime.now()) + '\t' + line)
                     now = time.time()
-                    if (now - last_publish) >= 1.:                                                                      #Whait 1 second because temp measurments are slow
+
+                    values = line.split('\t')
+
+                    if nbrIteration <= 1:
+                        valuesVoltage = values[:-1]
+                    else:
+                        valuesVoltage = [float(vOld) + float(vNew) for vOld, vNew in zip(valuesVoltage, values[:-1])]
+
+                    nbrIteration += 1
+                    print(nbrIteration)
+
+                    if (now - last_publish) >= 0.33:                                                                    #Wait 0.3 second just because (old:temp measurments are slow)
                         last_publish = now
-                        values = line.split('\t')
+
+                        #values = line.split('\t')
                         #tempA, tempB, tempC = float(values[-4]), float(values[-3]), float(values[-2])
                         #tempA, tempB, tempC = float(10), float(11), float(12)
                         #socket.send(f"Temperatures {now},{tempA},{tempB},{tempC}".encode())
 
                         message = f"Voltages {now}"
-                        for v in values[:-1]:                                                                           #values[:-1] exept the last one
-                            message += f",{float(v)}"
 
-                        #print(values[0])
+                        for v in valuesVoltage:                                                                         #values[:-1] exept the last one
+                            v = float(v) / (nbrIteration-1)
+                            message += f",{v}"
+
+                        nbrIteration = 0
+
                         #print(message)
                         socket.send(message.encode())
 
@@ -77,5 +104,4 @@ def main():
                         ser = setup_serial(socket)
                         reset_and_flush(ser)
                         ser.readline(),ser.readline()
-
 

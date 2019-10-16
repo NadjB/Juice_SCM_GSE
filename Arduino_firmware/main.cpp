@@ -6,7 +6,8 @@
 #include <SPI.h>
 
 
-constexpr auto CS_ADC = 10;
+constexpr auto ChipSelect_ADC = 10;
+String recievedString;
 
 constexpr auto V_BIAS_LNA_CHX = A0;
 constexpr auto V_BIAS_LNA_CHY = A5;
@@ -27,6 +28,10 @@ constexpr auto OUT2_INV_CHZ = A13;
 constexpr auto OUT2_NINV_CHX = A4;
 constexpr auto OUT2_NINV_CHY = A9;
 constexpr auto OUT2_NINV_CHZ = A14;
+
+constexpr auto Enable_alim_X = 11;
+constexpr auto Enable_alim_Y = 12;
+constexpr auto Enable_alim_Z = 13;
 
 /*
 constexpr uint8_t INA_CHX = 0x40;
@@ -73,10 +78,25 @@ static Ltc2983<SPI_dev> ltc2983(SPI_dev{});
 
 */
 
-/*void communicateADC()
+uint16_t communicateADC(int ch)
 {
+    uint16_t adcValue = 0;
+    digitalWrite(ChipSelect_ADC, LOW);                                              // write the ChipSelect_ADC pin low to initiate ADC sample and data transmit
+    if (ch == 0)
+    {
+        SPI.transfer16(0b1111101110010000);
+        digitalWrite(ChipSelect_ADC, HIGH);
+        digitalWrite(ChipSelect_ADC, LOW);
 
-}*/
+    }
+
+
+    adcValue = SPI.transfer16(0) & 0b0000111111111111;                      //read the value sent in 16b an derase the 4 MSB identifying the chanel
+
+    digitalWrite(ChipSelect_ADC, HIGH);
+    return adcValue;
+
+}
 
 void setup()
 {
@@ -84,19 +104,22 @@ void setup()
   Serial.begin(2000000);
   delay(1000);
 
-  pinMode(CS_ADC, OUTPUT);                                                  // initalize the  data ready and chip select pins:
-  digitalWrite(CS_ADC, HIGH);
+  pinMode(ChipSelect_ADC, OUTPUT);                                          // initalize the  data ready and chip select pins:
+  digitalWrite(ChipSelect_ADC, HIGH);                                       //For the ADC, High is disable
 
   SPI.begin();
   SPI.setClockDivider(SPI_CLOCK_DIV2);                                      //SPI Communication frequency at 8MHz (16MHz/2) ==> Checked & OK
   SPI.setBitOrder(MSBFIRST);
   SPI.setDataMode(SPI_MODE2);                                               //For AD7490BRUZ CLK default is at 1, Get data at falling edge, Send at Rising
 
-  digitalWrite(CS_ADC, LOW);                                                // take the SS pin low to select the chip:
+  digitalWrite(ChipSelect_ADC, LOW);                                        // take the SS pin low to select the chip:
   SPI.transfer16(0b1011101100000000);                                       //send the AD7490 Control register ==> Checked & OK
   //delay(100);
-  digitalWrite(CS_ADC, HIGH);                                               // take the SS pin high to de-select the chip
+  digitalWrite(ChipSelect_ADC, HIGH);                                       // take the SS pin high to de-select the chip
 
+  digitalWrite(Enable_alim_X, LOW);
+  digitalWrite(Enable_alim_Y, LOW);
+  digitalWrite(Enable_alim_Z, LOW);
 
   /*
   for(auto ina : {INA_CHX, INA_CHY, INA_CHZ})
@@ -128,36 +151,35 @@ void setup()
 
   std::cout << "# Found " << 3 << " channels" << std::endl;
   std::cout << "VDD_CHX\t"
-            << "VDD_CHY\t"
-            << "VDD_CHZ\t"
             << "M_CHX\t"
-            << "M_CHY\t"
-            << "M_CHZ\t"
             << "V_BIAS_LNA_CHX\t"
-            << "V_BIAS_LNA_CHY\t"
-            << "V_BIAS_LNA_CHZ\t"
-            << "OUT2_INV_CHX\t"
-            << "OUT2_INV_CHY\t"
-            << "OUT2_INV_CHZ\t"
             << "OUT2_NINV_CHX\t"
+            << "OUT2_INV_CHX\t"
+            << "VDD_CHY\t"
+            << "M_CHY\t"
+            << "V_BIAS_LNA_CHY\t"
+            << "OUT2_INV_CHY\t"
             << "OUT2_NINV_CHY\t"
+            << "VDD_CHZ\t"
+            << "M_CHZ\t"
+            << "V_BIAS_LNA_CHZ\t"
             << "OUT2_NINV_CHZ\t"
+            << "OUT2_INV_CHZ\t"
             << "ADC00_VDD_CHX\t"
-            << "ADC01_VDD_CHY\t"
-            << "ADC02_VDD_CHZ\t"
-            << "ADC03_M_CHX\t"
-            << "ADC04_M_CHY\t"
-            << "ADC05_M_CHZ\t"
-            << "ADC06_V_BIAS_LNA_CHX\t"
+            << "ADC01_M_CHX\t"
+            << "ADC02_V_BIAS_LNA_CHX\t"
+            << "ADC03_OUT2_NINV_CHX\t"
+            << "ADC04_OUT2_INV_CHX\t"
+            << "ADC05_VDD_CHY\t"
+            << "ADC06_M_CHY\t"
             << "ADC07_V_BIAS_LNA_CHY\t"
-            << "ADC08_V_BIAS_LNA_CHZ\t"
-            << "ADC12_OUT2_NINV_CHX\t"
-            << "ADC13_OUT2_NINV_CHY\t"
-            << "ADC14_OUT2_NINV_CHZ\t"
+            << "ADC08_OUT2_NINV_CHY\t"
             << "ADC09_OUT2_INV_CHX\t"
-            << "ADC10_OUT2_INV_CHY\t"
-            << "ADC11_OUT2_INV_CHZ\t"
-            << "ADC15_DUMMY\t"
+            << "ADC10_VDD_CHZ\t"
+            << "ADC11_M_CHZ\t"
+            << "ADC12_V_BIAS_LNA_CHZ\t"
+            << "ADC13_OUT2_NINV_CHZ\t"
+            << "ADC14_OUT2_INV_CHX\t"
             << "FrameNumber" << std::endl;
 }
 
@@ -165,29 +187,53 @@ void loop()
 {
 
   digitalWrite(LED_BUILTIN, HIGH);
-  for(auto i : {VDD_CHX, VDD_CHY, VDD_CHZ,
-                M_CHX, M_CHY, M_CHZ,
-                V_BIAS_LNA_CHX, V_BIAS_LNA_CHY, V_BIAS_LNA_CHZ,
-                OUT2_NINV_CHX, OUT2_NINV_CHY, OUT2_NINV_CHZ,             //for each desired tension
-                OUT2_INV_CHX, OUT2_INV_CHY, OUT2_INV_CHZ})
+
+  if(Serial.available())
+  {
+      recievedString = Serial.readStringUntil('\n');
+
+      if(recievedString.equals("Enable alims"))
+      {
+          digitalWrite(Enable_alim_X, HIGH);
+          digitalWrite(Enable_alim_Y, HIGH);
+          digitalWrite(Enable_alim_Z, HIGH);
+      }
+      if(recievedString.equals("Disable alims"))
+      {
+          digitalWrite(Enable_alim_X, LOW);
+          digitalWrite(Enable_alim_Y, LOW);
+          digitalWrite(Enable_alim_Z, LOW);
+      }
+
+      if(recievedString.equals("Enable alim X")){digitalWrite(Enable_alim_X, HIGH);}
+      if(recievedString.equals("Disable alim X")){digitalWrite(Enable_alim_X, LOW);}
+
+      if(recievedString.equals("Enable alim Y")){digitalWrite(Enable_alim_X, HIGH);}
+      if(recievedString.equals("Disable alim Y")){digitalWrite(Enable_alim_X, LOW);}
+
+      if(recievedString.equals("Enable alim Z")){digitalWrite(Enable_alim_X, HIGH);}
+      if(recievedString.equals("Disable alim Z")){digitalWrite(Enable_alim_X, LOW);}
+  }
+
+  for(auto i : {VDD_CHX, M_CHX, V_BIAS_LNA_CHX, OUT2_NINV_CHX, OUT2_INV_CHX,
+                VDD_CHY, M_CHY, V_BIAS_LNA_CHY, OUT2_NINV_CHY, OUT2_INV_CHY,
+                VDD_CHZ, M_CHZ, V_BIAS_LNA_CHZ, OUT2_NINV_CHZ, OUT2_INV_CHZ})
   {
     int sensorValue = analogRead(i);                                        //Checkt he corresponding pin
     std::cout << sensorValue << "\t";
   }
 
 
-  int testAdcConv = 0;
-  digitalWrite(CS_ADC, LOW);                                                // write the CS_ADC pin low to initiate ADC sample and data transmit
 
-  for(auto i : {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15})
+   int testAdcConv = 0;
+
+  for(auto i : {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14})
   {
-    uint16_t adcValue = SPI.transfer16(i);                                  //read the value sent in 16b
+    uint16_t adcValue = communicateADC(i);             //read the value sent in 16b
     if (i == adcValue >> 12) {testAdcConv++;}                               //to check the ADC channel (sent on the first 3 bits)
-    //std::cout << adcValue << "\t";
-    std::cout << i << "\t";                     //pour test
+    std::cout << adcValue << "\t";
   }
 
-  digitalWrite(CS_ADC, HIGH);                                               // wite LTC CS pin high to stop ADC from transmitting
 
   /*
   for(auto ina : {INA_CHX, INA_CHY, INA_CHZ})
