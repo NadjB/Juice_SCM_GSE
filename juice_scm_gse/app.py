@@ -8,8 +8,8 @@ import zmq, json
 from datetime import datetime
 from PySide2.QtWidgets import QMainWindow, QApplication
 from PySide2.QtCore import Signal, QThread, Slot, QObject, QMetaObject, QGenericArgument, Qt
-from juice_scm_gse.arduino_monitor import alimManagement
-from juice_scm_gse.discovery_driver import do_measurements, turn_on_psu, turn_off_psu
+#from juice_scm_gse.arduino_monitor import alimManagement
+#from juice_scm_gse.discovery_driver import do_measurements, turn_on_psu, turn_off_psu
 import numpy as np
 from juice_scm_gse.gui.settings_pannel import SettingsPannel
 from juice_scm_gse.gui.progress_pannel import ProgressPannel
@@ -51,15 +51,21 @@ class VoltagesWorker(QThread):
         # self.publisher.bind(f"tcp://*:{portPublisher}")
         # self.arduino_process = None
         # self.arduino_process_started = False
-        # self.alimsEnabled = False
+        self.alimsEnabled = False
 
     def startAlims(self):
-        message = f"Alims"
+
         if self.alimsEnabled:
-            message += f",Disable alims"
+            message = f"Disable alims"
+            #message = 0
+
         else:
-            message += f",Enable alims"
+            message = f"Enable alims"
+            #message = 1
+
         self.sockPair.send(message.encode())
+        #print(message)
+        self.alimsEnabled = not self.alimsEnabled
 
     def __del__(self):
             del self.sock
@@ -74,12 +80,12 @@ class VoltagesWorker(QThread):
                 values = data.decode().split(',')
                 values = {                                                                                              #??? damn tricky
                     key: float(value) for key, value in zip(
-                        ["VDD_CHX", "M_CHX", "V_BIAS_LNA_CHX", "OUT2_NINV_CHX", "OUT2_INV_CHX",
-                         "VDD_CHY", "M_CHY", "V_BIAS_LNA_CHY", "OUT2_NINV_CHY", "OUT2_INV_CHY",
-                         "VDD_CHZ", "M_CHZ", "V_BIAS_LNA_CHZ", "OUT2_NINV_CHZ", "OUT2_INV_CHZ",
-                         "ADC_VDD_CHX", "ADC_M_CHX", "ADC_V_BIAS_LNA_CHX", "ADC_OUT2_NINV_CHX", "ADC_OUT2_INV_CHX",
-                         "ADC_VDD_CHY", "ADC_M_CHY", "ADC_V_BIAS_LNA_CHY", "ADC_OUT2_NINV_CHY", "ADC_OUT2_INV_CHY",
-                         "ADC_VDD_CHZ", "ADC_M_CHZ", "ADC_V_BIAS_LNA_CHZ", "ADC_OUT2_NINV_CHZ", "ADC_OUT2_INV_CHZ"],
+                        ["VDD_CHX", "M_CHX", "V_BIAS_LNA_CHX", "S_CHX", "RTN_CHX",
+                         "VDD_CHY", "M_CHY", "V_BIAS_LNA_CHY", "S_CHY", "RTN_CHY",
+                         "VDD_CHZ", "M_CHZ", "V_BIAS_LNA_CHZ", "S_CHZ", "RTN_CHZ",
+                         "ADC_VDD_CHX", "ADC_M_CHX", "ADC_V_BIAS_LNA_CHX", "ADC_S_CHX", "ADC_RTN_CHX",
+                         "ADC_VDD_CHY", "ADC_M_CHY", "ADC_V_BIAS_LNA_CHY", "ADC_S_CHY", "ADC_RTN_CHY",
+                         "ADC_VDD_CHZ", "ADC_M_CHZ", "ADC_V_BIAS_LNA_CHZ", "ADC_S_CHZ", "ADC_RTN_CHZ"],
                             values[1:])
                 }
                 self.updateVoltages.emit(values)                                                                        #MAJ Voltages
@@ -89,6 +95,7 @@ class VoltagesWorker(QThread):
             if self.isInterruptionRequested():
                 return
             QThread.msleep(10)
+            QApplication.processEvents()
 
 
 class ArduinoStatusWorker(QThread):
@@ -102,7 +109,6 @@ class ArduinoStatusWorker(QThread):
         self.sock.setsockopt(zmq.SUBSCRIBE, b"Status")
         self.arduino_process = None
         self.arduino_process_started = False
-        self.alimsEnabled = False
 
     def __del__(self):
         del self.sock
@@ -177,9 +183,10 @@ class ApplicationWindow(QMainWindow):
 
         self.voltagesWorker = VoltagesWorker()
         self.voltagesWorker.updateVoltages.connect(self.updateVoltages)
+        self.ui.power_button.clicked.connect(lambda: print("clicked!"))
         self.voltagesWorker.start()
         self.voltagesWorker.moveToThread(self.voltagesWorker)
-        self.ui.power_button.clicked.connect(self.voltagesWorker.startAlims)
+        self.ui.power_button.clicked.connect(self.voltagesWorker.startAlims, Qt.QueuedConnection)
 
         # self.already_restarting_disco = False
         # self.discoWorker = DiscoveryWorker()
@@ -217,13 +224,13 @@ class ApplicationWindow(QMainWindow):
             self.ui.__dict__[f"CH{ch}_VDD"].display(5. / 1024. * values[f"VDD_CH{ch}"])
             self.ui.__dict__[f"CH{ch}_BIAS"].display(5. / 1024. * values[f"V_BIAS_LNA_CH{ch}"])
             self.ui.__dict__[f"CH{ch}_M"].display(5. / 1024. * values[f"M_CH{ch}"])
-            self.ui.__dict__[f"CH{ch}_OUT2_INV"].display(5. / 1024 * values[f"OUT2_INV_CH{ch}"])
-            self.ui.__dict__[f"CH{ch}_OUT2_NINV"].display(5. / 1024 * values[f"OUT2_NINV_CH{ch}"])
+            self.ui.__dict__[f"CH{ch}_RTN"].display(5. / 1024 * values[f"RTN_CH{ch}"])
+            self.ui.__dict__[f"CH{ch}_S"].display(5. / 1024 * values[f"S_CH{ch}"])
             self.ui.__dict__[f"CH{ch}_VDD_ADC"].display(5. / 4096. * values[f"ADC_VDD_CH{ch}"])
             self.ui.__dict__[f"CH{ch}_BIAS_ADC"].display(5. / 4096. * values[f"ADC_V_BIAS_LNA_CH{ch}"])
             self.ui.__dict__[f"CH{ch}_M_ADC"].display(5. / 4096. * values[f"ADC_M_CH{ch}"])
-            self.ui.__dict__[f"CH{ch}_OUT2_INV_ADC"].display(5. / 4096 * values[f"ADC_OUT2_INV_CH{ch}"])
-            self.ui.__dict__[f"CH{ch}_OUT2_NINV_ADC"].display(5. / 4096 * values[f"ADC_OUT2_NINV_CH{ch}"])
+            self.ui.__dict__[f"CH{ch}_RTN_ADC"].display(5. / 4096 * values[f"ADC_RTN_CH{ch}"])
+            self.ui.__dict__[f"CH{ch}_S_ADC"].display(5. / 4096 * values[f"ADC_S_CH{ch}"])
 
     def start_measurement(self):
         now = str(datetime.now())

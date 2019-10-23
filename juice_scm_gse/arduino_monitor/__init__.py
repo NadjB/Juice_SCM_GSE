@@ -15,11 +15,12 @@ def setup_ipc(port=9990, portPair=9991):
     return sock, sockPair
 
 
-def alimManagement(sockPair, ser):
+def alimsManagement():
 
     string = sockPair.recv(flags=zmq.NOBLOCK)
-    topic, message = string.split()
-    ser.write(f"{message}".encode())
+    if string:
+        topic, message = string.split()
+        ser.write(f"{message}".encode())
 
 
 def setup_serial(socket, port_regex='/dev/ttyACM[0-1]', baudrate=2000000):                                             #Get the Arduino data via the serial communication
@@ -59,11 +60,19 @@ def main():
         print(fname)
         with open(fname, 'w') as out:
             reset_and_flush(ser)
-            #alimManagement(sockPair, ser)
+
             out.write(ser.readline().decode())  # comment line
             out.write(ser.readline().decode())  # header columns names
             last_publish = time.time()
             while True:
+                try:
+                    msgAlimsManagement = sockPair.recv(flags=zmq.NOBLOCK)
+                    msgAlimsManagement = msgAlimsManagement.decode("utf-8")
+                    print(msgAlimsManagement)
+                    ser.write(f"{msgAlimsManagement}".encode())
+                except zmq.ZMQError:
+                    pass
+
                 try:
                     line = ser.readline().decode()                                                                      #get and decode the data on the serial communication
                     out.write(str(datetime.datetime.now()) + '\t' + line)
@@ -77,7 +86,7 @@ def main():
                         valuesVoltage = [float(vOld) + float(vNew) for vOld, vNew in zip(valuesVoltage, values[:-1])]
 
                     nbrIteration += 1
-                    print(nbrIteration)
+                    #print(nbrIteration)
 
                     if (now - last_publish) >= 0.33:                                                                    #Wait 0.3 second just because (old:temp measurments are slow)
                         last_publish = now

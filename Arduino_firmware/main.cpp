@@ -21,13 +21,13 @@ constexpr auto VDD_CHX = A2;
 constexpr auto VDD_CHY = A7;
 constexpr auto VDD_CHZ = A12;
 
-constexpr auto OUT2_INV_CHX = A3;
-constexpr auto OUT2_INV_CHY = A8;
-constexpr auto OUT2_INV_CHZ = A13;
+constexpr auto S_CHX = A3;
+constexpr auto S_CHY = A8;
+constexpr auto S_CHZ = A13;
 
-constexpr auto OUT2_NINV_CHX = A4;
-constexpr auto OUT2_NINV_CHY = A9;
-constexpr auto OUT2_NINV_CHZ = A14;
+constexpr auto RTN_CHX = A4;
+constexpr auto RTN_CHY = A9;
+constexpr auto RTN_CHZ = A14;
 
 constexpr auto Enable_alim_X = 11;
 constexpr auto Enable_alim_Y = 12;
@@ -153,33 +153,33 @@ void setup()
   std::cout << "VDD_CHX\t"
             << "M_CHX\t"
             << "V_BIAS_LNA_CHX\t"
-            << "OUT2_NINV_CHX\t"
-            << "OUT2_INV_CHX\t"
+            << "RTN_CHX\t"
+            << "S_CHX\t"
             << "VDD_CHY\t"
             << "M_CHY\t"
             << "V_BIAS_LNA_CHY\t"
-            << "OUT2_INV_CHY\t"
-            << "OUT2_NINV_CHY\t"
+            << "S_CHY\t"
+            << "RTN_CHY\t"
             << "VDD_CHZ\t"
             << "M_CHZ\t"
             << "V_BIAS_LNA_CHZ\t"
-            << "OUT2_NINV_CHZ\t"
-            << "OUT2_INV_CHZ\t"
+            << "RTN_CHZ\t"
+            << "S_CHZ\t"
             << "ADC00_VDD_CHX\t"
             << "ADC01_M_CHX\t"
             << "ADC02_V_BIAS_LNA_CHX\t"
-            << "ADC03_OUT2_NINV_CHX\t"
-            << "ADC04_OUT2_INV_CHX\t"
+            << "ADC03_RTN_CHX\t"
+            << "ADC04_S_CHX\t"
             << "ADC05_VDD_CHY\t"
             << "ADC06_M_CHY\t"
             << "ADC07_V_BIAS_LNA_CHY\t"
-            << "ADC08_OUT2_NINV_CHY\t"
-            << "ADC09_OUT2_INV_CHX\t"
+            << "ADC08_RTN_CHY\t"
+            << "ADC09_S_CHX\t"
             << "ADC10_VDD_CHZ\t"
             << "ADC11_M_CHZ\t"
             << "ADC12_V_BIAS_LNA_CHZ\t"
-            << "ADC13_OUT2_NINV_CHZ\t"
-            << "ADC14_OUT2_INV_CHX\t"
+            << "ADC13_RTN_CHZ\t"
+            << "ADC14_S_CHX\t"
             << "FrameNumber" << std::endl;
 }
 
@@ -215,9 +215,9 @@ void loop()
       if(recievedString.equals("Disable alim Z")){digitalWrite(Enable_alim_X, LOW);}
   }
 
-  for(auto i : {VDD_CHX, M_CHX, V_BIAS_LNA_CHX, OUT2_NINV_CHX, OUT2_INV_CHX,
-                VDD_CHY, M_CHY, V_BIAS_LNA_CHY, OUT2_NINV_CHY, OUT2_INV_CHY,
-                VDD_CHZ, M_CHZ, V_BIAS_LNA_CHZ, OUT2_NINV_CHZ, OUT2_INV_CHZ})
+  for(auto i : {VDD_CHX, M_CHX, V_BIAS_LNA_CHX, RTN_CHX, S_CHX,
+                VDD_CHY, M_CHY, V_BIAS_LNA_CHY, RTN_CHY, S_CHY,
+                VDD_CHZ, M_CHZ, V_BIAS_LNA_CHZ, RTN_CHZ, S_CHZ})
   {
     int sensorValue = analogRead(i);                                        //Checkt he corresponding pin
     std::cout << sensorValue << "\t";
