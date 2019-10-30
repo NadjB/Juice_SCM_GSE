@@ -6,11 +6,12 @@ from functools import partial
 import subprocess
 import zmq, json
 from datetime import datetime
-from PySide2.QtWidgets import QMainWindow, QApplication
+from PySide2.QtWidgets import QMainWindow, QApplication, QWidget, QMessageBox
 from PySide2.QtCore import Signal, QThread, Slot, QObject, QMetaObject, QGenericArgument, Qt
 #from juice_scm_gse.arduino_monitor import alimManagement
 #from juice_scm_gse.discovery_driver import do_measurements, turn_on_psu, turn_off_psu
 import numpy as np
+import juice_scm_gse.config as cfg
 from juice_scm_gse.gui.settings_pannel import SettingsPannel
 from juice_scm_gse.gui.progress_pannel import ProgressPannel
 from juice_scm_gse.gui.mainwindow import Ui_MainWindow
@@ -37,6 +38,8 @@ Categories=Utility;Application;"""
 class VoltagesWorker(QThread):
     updateVoltages = Signal(dict)
     restartDisco = Signal()
+    signalUpdatePower = Signal(bool)
+
 
     def __init__(self, port=9990, portPair=9991):
         QThread.__init__(self)                                                                                          #Creat a thread
@@ -47,30 +50,35 @@ class VoltagesWorker(QThread):
 
         self.sockPair = self.context.socket(zmq.PAIR)
         self.sockPair.connect(f"tcp://localhost:{portPair}")
-        # self.publisher = self.context.socket(zmq.PUB)
-        # self.publisher.bind(f"tcp://*:{portPublisher}")
-        # self.arduino_process = None
-        # self.arduino_process_started = False
+
         self.alimsEnabled = False
+        #self.asicsList = []
+
+    def asics(self, asic="XXX"):
+
+        asicID = f"ASIC_JUICEMagic3_SN_{asic}"
+        self.sockPair.send(asicID.encode())
+        print(f"{asicID} sent")
+
+
 
     def startAlims(self):
 
         if self.alimsEnabled:
             message = f"Disable alims"
-            #message = 0
 
         else:
             message = f"Enable alims"
-            #message = 1
 
         self.sockPair.send(message.encode())
-        #print(message)
         self.alimsEnabled = not self.alimsEnabled
+        self.signalUpdatePower.emit(self.alimsEnabled)
+
 
     def __del__(self):
-            del self.sock
-            del self.publisher
-            del self.context
+        del self.sock
+        del self.sockPair
+        del self.context
 
     def run(self):
         while True:
@@ -86,7 +94,7 @@ class VoltagesWorker(QThread):
                          "ADC_VDD_CHX", "ADC_M_CHX", "ADC_V_BIAS_LNA_CHX", "ADC_S_CHX", "ADC_RTN_CHX",
                          "ADC_VDD_CHY", "ADC_M_CHY", "ADC_V_BIAS_LNA_CHY", "ADC_S_CHY", "ADC_RTN_CHY",
                          "ADC_VDD_CHZ", "ADC_M_CHZ", "ADC_V_BIAS_LNA_CHZ", "ADC_S_CHZ", "ADC_RTN_CHZ"],
-                            values[1:])
+                        values[1:])
                 }
                 self.updateVoltages.emit(values)                                                                        #MAJ Voltages
 
@@ -154,8 +162,6 @@ class ArduinoStatusWorker(QThread):
 
 
 
-
-
 class ApplicationWindow(QMainWindow):
     """Main Window"""
     Launch_Measurements = Signal(str)
@@ -167,6 +173,13 @@ class ApplicationWindow(QMainWindow):
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
         self.ui.actionSettings.triggered.connect(self.settings_ui.show)
+        self.asicsList = []
+        self.acknowledgedAsicID = False
+        self.asicPowered = False
+        self.asicFileName = ""
+        self.path = cfg.global_workdir.get() + "/ASICs"
+        mkdir(self.path)  # create a "monitor" file in the working directory
+        self.measuementRequested = False
 
 
 #        self.ui.power_button.clicked.connect(self.turn_on)
@@ -183,10 +196,19 @@ class ApplicationWindow(QMainWindow):
 
         self.voltagesWorker = VoltagesWorker()
         self.voltagesWorker.updateVoltages.connect(self.updateVoltages)
-        self.ui.power_button.clicked.connect(lambda: print("clicked!"))
+        self.voltagesWorker.updateVoltages.connect(self.asicRecording)
         self.voltagesWorker.start()
         self.voltagesWorker.moveToThread(self.voltagesWorker)
         self.ui.power_button.clicked.connect(self.voltagesWorker.startAlims, Qt.QueuedConnection)
+        self.voltagesWorker.signalUpdatePower.connect(self.updatePowerButton)
+        self.ui.asicSN.setInputMask("000")
+        self.ui.asicSN.setMaxLength(3)
+        self.ui.asicSN.returnPressed.connect(lambda: print("Declenché"))                                                #test
+        #self.ui.asicSN.returnPressed.connect(lambda: self.voltagesWorker.asics(self.ui.asicSN.text()))
+        self.ui.asicSN.returnPressed.connect(lambda: self.asicManagement(self.ui.asicSN.text()))
+        self.ui.Launch_Measurements.clicked.connect(self.requestMeasurement)
+
+
 
         # self.already_restarting_disco = False
         # self.discoWorker = DiscoveryWorker()
@@ -203,14 +225,15 @@ class ApplicationWindow(QMainWindow):
 
 #        self.voltagesWorker.restartDisco.connect(self.restart_disco)
 
+
     def __del__(self):
         for thr in [self.arduinoStatusWorker, self.voltagesWorker]:
             thr.requestInterruption()
             while thr.isRunning():
                 QThread.msleep(10)
-        del self.discoWorker
+#        del self.discoWorker
         del self.arduinoStatusWorker
-        del self.tempWorker
+#        del self.tempWorker
         del self.voltagesWorker
         self.close()
 
@@ -219,18 +242,96 @@ class ApplicationWindow(QMainWindow):
 #        self.ui.tempB_LCD.display(tempB)
 #        self.ui.tempC_LCD.display(tempC)
 
+    def asicManagement(self, asicID="Rien n'est passé"):
+
+        print(asicID)
+        if asicID in self.asicsList:
+            print(f"id {asicID} already exist, do something")
+            choice = QMessageBox.question(self, 'Conflict',
+                                                "This ID already exist, begin anyway?",
+                                                QMessageBox.Yes | QMessageBox.No)
+            if choice == QMessageBox.Yes:
+                self.acknowledgedAsicID = True
+                self.asicFileName = f"{self.path}/ASIC_JUICEMagic3_SN_{asicID}-{str(datetime.now())}.txt"  # create a file with the current date to dump the data
+                print(self.asicFileName)
+                self.voltagesWorker.asics(asicID)
+
+            else:
+                pass
+
+        else:
+            choice = QMessageBox.question(self, 'Confirmation',                                                         #confirmation a enlever
+                                                f"The ID you entered is {asicID}, confirm?",
+                                                QMessageBox.Yes | QMessageBox.No)
+            if choice == QMessageBox.Yes:
+                self.asicsList.append(asicID)
+                self.acknowledgedAsicID = True
+                self.asicFileName = f"{self.path}/ASIC_JUICEMagic3_SN_{asicID}-{str(datetime.now())}.txt"  # create a file with the current date to dump the data
+                print(self.asicFileName)
+                self.voltagesWorker.asics(asicID)
+
+
+            else:
+                pass
+
+    def requestMeasurement(self):
+        self.measuementRequested = True
+
+    def asicRecording(self, values):
+        if self.acknowledgedAsicID and self.asicPowered:
+            self.ui.asicSN.setDisabled(True)
+            self.ui.Launch_Measurements.setEnabled(True)
+            if self.measuementRequested:
+                self.ui.Launch_Measurements.setDisabled(True)
+                self.ui.Launch_Measurements.setStyleSheet('QPushButton {background-color: #69ff69;}')
+
+                with open(self.asicFileName, 'a') as out:
+                    out.write(str(datetime.now()) + '\t')
+                    for channel, value in values.items():
+                        if "ADC" in channel:
+                            value = 5 * value / 4096
+                        else:
+                            value = 5 * value /1024
+
+                        out.write(f"{channel}: {value}, ")
+                    out.write('\n')
+                    print("recording")
+        else:
+            self.ui.Launch_Measurements.setStyleSheet('')
+            self.ui.Launch_Measurements.setDisabled(True)
+            self.ui.asicSN.setEnabled(True)
+
+
     def updateVoltages(self, values):
-        for ch in ["X", "Y", "Z"]:
-            self.ui.__dict__[f"CH{ch}_VDD"].display(5. / 1024. * values[f"VDD_CH{ch}"])
-            self.ui.__dict__[f"CH{ch}_BIAS"].display(5. / 1024. * values[f"V_BIAS_LNA_CH{ch}"])
-            self.ui.__dict__[f"CH{ch}_M"].display(5. / 1024. * values[f"M_CH{ch}"])
-            self.ui.__dict__[f"CH{ch}_RTN"].display(5. / 1024 * values[f"RTN_CH{ch}"])
-            self.ui.__dict__[f"CH{ch}_S"].display(5. / 1024 * values[f"S_CH{ch}"])
-            self.ui.__dict__[f"CH{ch}_VDD_ADC"].display(5. / 4096. * values[f"ADC_VDD_CH{ch}"])
-            self.ui.__dict__[f"CH{ch}_BIAS_ADC"].display(5. / 4096. * values[f"ADC_V_BIAS_LNA_CH{ch}"])
-            self.ui.__dict__[f"CH{ch}_M_ADC"].display(5. / 4096. * values[f"ADC_M_CH{ch}"])
-            self.ui.__dict__[f"CH{ch}_RTN_ADC"].display(5. / 4096 * values[f"ADC_RTN_CH{ch}"])
-            self.ui.__dict__[f"CH{ch}_S_ADC"].display(5. / 4096 * values[f"ADC_S_CH{ch}"])
+        if self.measuementRequested:
+            for ch in ["X", "Y", "Z"]:
+                self.ui.__dict__[f"CH{ch}_VDD"].display(5. / 1024. * values[f"VDD_CH{ch}"])
+                self.ui.__dict__[f"CH{ch}_BIAS"].display(5. / 1024. * values[f"V_BIAS_LNA_CH{ch}"])
+                self.ui.__dict__[f"CH{ch}_M"].display(5. / 1024. * values[f"M_CH{ch}"])
+                self.ui.__dict__[f"CH{ch}_RTN"].display(5. / 1024 * values[f"RTN_CH{ch}"])
+                self.ui.__dict__[f"CH{ch}_S"].display(5. / 1024 * values[f"S_CH{ch}"])
+                self.ui.__dict__[f"CH{ch}_VDD_ADC"].display(5. / 4096. * values[f"ADC_VDD_CH{ch}"])
+                self.ui.__dict__[f"CH{ch}_BIAS_ADC"].display(5. / 4096. * values[f"ADC_V_BIAS_LNA_CH{ch}"])
+                self.ui.__dict__[f"CH{ch}_M_ADC"].display(5. / 4096. * values[f"ADC_M_CH{ch}"])
+                self.ui.__dict__[f"CH{ch}_RTN_ADC"].display(5. / 4096 * values[f"ADC_RTN_CH{ch}"])
+                self.ui.__dict__[f"CH{ch}_S_ADC"].display(5. / 4096 * values[f"ADC_S_CH{ch}"])
+
+    def updatePowerButton(self, powered):
+        if powered:
+            self.ui.power_button.setText("Alive")
+            self.ui.power_button.setStyleSheet('QPushButton {background-color: green;}')
+            self.asicPowered = True
+            if self.asicsList:
+                if self.asicsList[-1] == self.ui.asicSN.text():
+                    self.acknowledgedAsicID = True
+        else:
+            self.ui.power_button.setText("Dead")
+            self.ui.power_button.setStyleSheet('QPushButton {background-color: #900000;}')
+
+            self.acknowledgedAsicID = False
+            self.measuementRequested = False
+            self.asicPowered = False
+
 
     def start_measurement(self):
         now = str(datetime.now())

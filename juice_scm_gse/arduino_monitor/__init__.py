@@ -15,15 +15,8 @@ def setup_ipc(port=9990, portPair=9991):
     return sock, sockPair
 
 
-def alimsManagement():
 
-    string = sockPair.recv(flags=zmq.NOBLOCK)
-    if string:
-        topic, message = string.split()
-        ser.write(f"{message}".encode())
-
-
-def setup_serial(socket, port_regex='/dev/ttyACM[0-1]', baudrate=2000000):                                             #Get the Arduino data via the serial communication
+def setup_serial(socket, port_regex='/dev/ttyACM[0-1]', baudrate=2000000):                                              #Get the Arduino data via the serial communication
     socket.send(f"Status disconnected".encode())
     while True:
         print("try to connect")
@@ -66,10 +59,14 @@ def main():
             last_publish = time.time()
             while True:
                 try:
-                    msgAlimsManagement = sockPair.recv(flags=zmq.NOBLOCK)
-                    msgAlimsManagement = msgAlimsManagement.decode("utf-8")
-                    print(msgAlimsManagement)
-                    ser.write(f"{msgAlimsManagement}".encode())
+                    msg = sockPair.recv(flags=zmq.NOBLOCK)
+                    msg = msg.decode("utf-8")
+                    if "alim" in msg:
+                        ser.write(f"{msg}".encode())
+
+                    if "ASIC_JUICEMagic3" in msg:
+                        out.write('\t' + msg)
+
                 except zmq.ZMQError:
                     pass
 
@@ -86,7 +83,6 @@ def main():
                         valuesVoltage = [float(vOld) + float(vNew) for vOld, vNew in zip(valuesVoltage, values[:-1])]
 
                     nbrIteration += 1
-                    #print(nbrIteration)
 
                     if (now - last_publish) >= 0.33:                                                                    #Wait 0.3 second just because (old:temp measurments are slow)
                         last_publish = now
@@ -99,13 +95,16 @@ def main():
                         message = f"Voltages {now}"
 
                         for v in valuesVoltage:                                                                         #values[:-1] exept the last one
-                            v = float(v) / (nbrIteration-1)
+                            v = float(v)
+                            if nbrIteration > 1:
+                                v = v / (nbrIteration-1)
                             message += f",{v}"
 
                         nbrIteration = 0
 
-                        #print(message)
                         socket.send(message.encode())
+                        out.flush()
+
 
                 except serial.serialutil.SerialException:
                     for _ in [None,None]:
