@@ -6,6 +6,8 @@ from functools import partial
 import subprocess
 import zmq, json
 from datetime import datetime
+
+from PySide2.QtGui import QValidator, QRegExpValidator
 from PySide2.QtWidgets import QMainWindow, QApplication, QWidget, QMessageBox
 from PySide2.QtCore import Signal, QThread, Slot, QObject, QMetaObject, QGenericArgument, Qt
 #from juice_scm_gse.arduino_monitor import alimManagement
@@ -91,6 +93,7 @@ class VoltagesWorker(QThread):
                         ["VDD_CHX", "M_CHX", "V_BIAS_LNA_CHX", "S_CHX", "RTN_CHX",
                          "VDD_CHY", "M_CHY", "V_BIAS_LNA_CHY", "S_CHY", "RTN_CHY",
                          "VDD_CHZ", "M_CHZ", "V_BIAS_LNA_CHZ", "S_CHZ", "RTN_CHZ",
+                         #"Conso_CHX", "Alim_CHX",
                          "ADC_VDD_CHX", "ADC_M_CHX", "ADC_V_BIAS_LNA_CHX", "ADC_S_CHX", "ADC_RTN_CHX",
                          "ADC_VDD_CHY", "ADC_M_CHY", "ADC_V_BIAS_LNA_CHY", "ADC_S_CHY", "ADC_RTN_CHY",
                          "ADC_VDD_CHZ", "ADC_M_CHZ", "ADC_V_BIAS_LNA_CHZ", "ADC_S_CHZ", "ADC_RTN_CHZ"],
@@ -201,12 +204,13 @@ class ApplicationWindow(QMainWindow):
         self.voltagesWorker.moveToThread(self.voltagesWorker)
         self.ui.power_button.clicked.connect(self.voltagesWorker.startAlims, Qt.QueuedConnection)
         self.voltagesWorker.signalUpdatePower.connect(self.updatePowerButton)
-        self.ui.asicSN.setInputMask("000")
-        self.ui.asicSN.setMaxLength(3)
+        self.ui.asicSN.setValidator(QRegExpValidator("[0-9]{3}"))                                                       #3 Chifre
         self.ui.asicSN.returnPressed.connect(lambda: print("Declenché"))                                                #test
-        #self.ui.asicSN.returnPressed.connect(lambda: self.voltagesWorker.asics(self.ui.asicSN.text()))
         self.ui.asicSN.returnPressed.connect(lambda: self.asicManagement(self.ui.asicSN.text()))
         self.ui.Launch_Measurements.clicked.connect(self.requestMeasurement)
+        self.ui.asicsListe.currentIndexChanged.connect(lambda: self.ui.asicSN.setText(self.ui.asicsListe.currentText()))
+        self.ui.asicsListe.currentIndexChanged.connect(lambda: self.asicManagement(False))
+
 
 
 
@@ -246,29 +250,38 @@ class ApplicationWindow(QMainWindow):
 
         print(asicID)
         if asicID in self.asicsList:
-            print(f"id {asicID} already exist, do something")
             choice = QMessageBox.question(self, 'Conflict',
-                                                "This ID already exist, begin anyway?",
+                                                f"{asicID}\n\nThis ID already exist, begin anyway?",
                                                 QMessageBox.Yes | QMessageBox.No)
             if choice == QMessageBox.Yes:
                 self.acknowledgedAsicID = True
                 self.asicFileName = f"{self.path}/ASIC_JUICEMagic3_SN_{asicID}-{str(datetime.now())}.txt"  # create a file with the current date to dump the data
                 print(self.asicFileName)
                 self.voltagesWorker.asics(asicID)
+                self.ui.asicSN.setStyleSheet("QLineEdit {background-color: green;}")
 
             else:
                 pass
 
+        elif asicID == False:
+            self.acknowledgedAsicID = False
+            self.ui.asicSN.setStyleSheet('')
+
+
+
         else:
             choice = QMessageBox.question(self, 'Confirmation',                                                         #confirmation a enlever
-                                                f"The ID you entered is {asicID}, confirm?",
+                                                f"The ID you entered is \n\n{asicID}\n\nconfirm?",
                                                 QMessageBox.Yes | QMessageBox.No)
             if choice == QMessageBox.Yes:
                 self.asicsList.append(asicID)
+                self.ui.asicsListe.clear()                                                                              #Sauvage mais fonctionne
+                self.ui.asicsListe.addItems(self.asicsList[::-1])
                 self.acknowledgedAsicID = True
                 self.asicFileName = f"{self.path}/ASIC_JUICEMagic3_SN_{asicID}-{str(datetime.now())}.txt"  # create a file with the current date to dump the data
                 print(self.asicFileName)
                 self.voltagesWorker.asics(asicID)
+                self.ui.asicSN.setStyleSheet("QLineEdit {background-color: green;}")
 
 
             else:
@@ -310,6 +323,8 @@ class ApplicationWindow(QMainWindow):
                 self.ui.__dict__[f"CH{ch}_M"].display(5. / 1024. * values[f"M_CH{ch}"])
                 self.ui.__dict__[f"CH{ch}_RTN"].display(5. / 1024 * values[f"RTN_CH{ch}"])
                 self.ui.__dict__[f"CH{ch}_S"].display(5. / 1024 * values[f"S_CH{ch}"])
+                # self.ui.__dict__[f"CH{ch}_A"].display(5. / 1024 * values[f"Conso_CH{ch}"])
+                # self.ui.__dict__[f"CH{ch}_V"].display(5. / 1024 * values[f"Alim_CH{ch}"])
                 self.ui.__dict__[f"CH{ch}_VDD_ADC"].display(5. / 4096. * values[f"ADC_VDD_CH{ch}"])
                 self.ui.__dict__[f"CH{ch}_BIAS_ADC"].display(5. / 4096. * values[f"ADC_V_BIAS_LNA_CH{ch}"])
                 self.ui.__dict__[f"CH{ch}_M_ADC"].display(5. / 4096. * values[f"ADC_M_CH{ch}"])
@@ -324,11 +339,12 @@ class ApplicationWindow(QMainWindow):
             if self.asicsList:
                 if self.asicsList[-1] == self.ui.asicSN.text():
                     self.acknowledgedAsicID = True
+                    self.ui.asicSN.setStyleSheet("QLineEdit {background-color: green;}")
+
         else:
             self.ui.power_button.setText("Dead")
             self.ui.power_button.setStyleSheet('QPushButton {background-color: #900000;}')
-
-            self.acknowledgedAsicID = False
+            self.asicManagement(False)
             self.measuementRequested = False
             self.asicPowered = False
 

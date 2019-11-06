@@ -3,6 +3,7 @@ import zmq
 from glob import glob
 import juice_scm_gse.config as cfg
 from  juice_scm_gse.utils import mkdir
+from re import search
 
 
 def setup_ipc(port=9990, portPair=9991):
@@ -77,7 +78,13 @@ def main():
 
                     values = line.split('\t')
 
-                    if nbrIteration <= 1:
+                    for val in values:
+                        if "_CH" in val:
+                            nbrIteration = 0
+
+                    if nbrIteration == 0:                                                                               #la premiere iteration n'a que les entête
+                        pass
+                    elif nbrIteration == 1:
                         valuesVoltage = values[:-1]
                     else:
                         valuesVoltage = [float(vOld) + float(vNew) for vOld, vNew in zip(valuesVoltage, values[:-1])]
