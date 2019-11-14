@@ -9,17 +9,17 @@
 constexpr auto ChipSelect_ADC = 10;
 String recievedString;
 
-constexpr auto V_BIAS_LNA_CHX = A0;
-constexpr auto V_BIAS_LNA_CHY = A5;
-constexpr auto V_BIAS_LNA_CHZ = A10;
+constexpr auto VDD_CHX = A0;
+constexpr auto VDD_CHY = A5;
+constexpr auto VDD_CHZ = A10;
 
 constexpr auto M_CHX = A1;
 constexpr auto M_CHY = A6;
 constexpr auto M_CHZ = A11;
 
-constexpr auto VDD_CHX = A2;
-constexpr auto VDD_CHY = A7;
-constexpr auto VDD_CHZ = A12;
+constexpr auto V_BIAS_LNA_CHX = A2;
+constexpr auto V_BIAS_LNA_CHY = A7;
+constexpr auto V_BIAS_LNA_CHZ = A12;
 
 constexpr auto S_CHX = A3;
 constexpr auto S_CHY = A8;
@@ -100,7 +100,7 @@ uint16_t communicateADC(int ch)
 
 void setup()
 {
-  pinMode(LED_BUILTIN, OUTPUT);
+  //pinMode(LED_BUILTIN, OUTPUT);
   Serial.begin(2000000);
   delay(1000);
 
@@ -186,7 +186,7 @@ void setup()
 void loop()
 {
 
-  digitalWrite(LED_BUILTIN, HIGH);
+  //digitalWrite(LED_BUILTIN, HIGH);
 
   if(Serial.available())
   {
@@ -262,6 +262,6 @@ void loop()
 
   std::cout << frame++ << std::endl;*/
   std::cout << testAdcConv << std::endl;
-  digitalWrite(LED_BUILTIN, LOW);
+//digitalWrite(LED_BUILTIN, LOW);
   delay(1);
 }
