@@ -302,9 +302,15 @@ class ApplicationWindow(QMainWindow):
                     out.write(str(datetime.now()) + '\t')
                     for channel, value in values.items():
                         if "ADC" in channel:
-                            value = 5 * value / 4096
+                            if "VDD" in channel:
+                                value = (6.0 + 0.023) * value / 4096
+                            else:
+                                value = 5 * value / 4096
                         else:
-                            value = 5 * value /1024
+                            if "VDD" in channel:
+                                value = (6.0 + 0.023) * value / 1024
+                            else:
+                                value = 5 * value / 1024
 
                         out.write(f"{channel}: {value}, ")
                     out.write('\n')
@@ -318,14 +324,14 @@ class ApplicationWindow(QMainWindow):
     def updateVoltages(self, values):
         if self.measuementRequested:
             for ch in ["X", "Y", "Z"]:
-                self.ui.__dict__[f"CH{ch}_VDD"].display(5. / 1024. * values[f"VDD_CH{ch}"])
+                self.ui.__dict__[f"CH{ch}_VDD"].display((6.0 + 0.023) / 1024. * values[f"VDD_CH{ch}"])                             #(+|- offset due au rapport de resistance
                 self.ui.__dict__[f"CH{ch}_BIAS"].display(5. / 1024. * values[f"V_BIAS_LNA_CH{ch}"])
                 self.ui.__dict__[f"CH{ch}_M"].display(5. / 1024. * values[f"M_CH{ch}"])
                 self.ui.__dict__[f"CH{ch}_RTN"].display(5. / 1024 * values[f"RTN_CH{ch}"])
                 self.ui.__dict__[f"CH{ch}_S"].display(5. / 1024 * values[f"S_CH{ch}"])
                 # self.ui.__dict__[f"CH{ch}_A"].display(5. / 1024 * values[f"Conso_CH{ch}"])
                 # self.ui.__dict__[f"CH{ch}_V"].display(5. / 1024 * values[f"Alim_CH{ch}"])
-                self.ui.__dict__[f"CH{ch}_VDD_ADC"].display(5. / 4096. * values[f"ADC_VDD_CH{ch}"])
+                self.ui.__dict__[f"CH{ch}_VDD_ADC"].display((6.0 + 0.023) / 4096. * values[f"ADC_VDD_CH{ch}"])
                 self.ui.__dict__[f"CH{ch}_BIAS_ADC"].display(5. / 4096. * values[f"ADC_V_BIAS_LNA_CH{ch}"])
                 self.ui.__dict__[f"CH{ch}_M_ADC"].display(5. / 4096. * values[f"ADC_M_CH{ch}"])
                 self.ui.__dict__[f"CH{ch}_RTN_ADC"].display(5. / 4096 * values[f"ADC_RTN_CH{ch}"])
