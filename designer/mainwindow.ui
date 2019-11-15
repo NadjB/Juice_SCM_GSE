@@ -379,7 +379,7 @@
              <item row="6" column="3" rowspan="2" colspan="2">
               <layout class="QFormLayout" name="formLayout_11">
                <item row="0" column="0">
-                <widget class="QLCDNumber" name="lcdNumber">
+                <widget class="QLCDNumber" name="CHY_I">
                  <property name="frameShape">
                   <enum>QFrame::NoFrame</enum>
                  </property>
@@ -389,7 +389,7 @@
                 </widget>
                </item>
                <item row="1" column="0">
-                <widget class="QLCDNumber" name="lcdNumber_2">
+                <widget class="QLCDNumber" name="CHY_V">
                  <property name="frameShape">
                   <enum>QFrame::NoFrame</enum>
                  </property>
@@ -401,7 +401,7 @@
                <item row="0" column="1">
                 <widget class="QLabel" name="label_58">
                  <property name="text">
-                  <string>A</string>
+                  <string>mA</string>
                  </property>
                 </widget>
                </item>
@@ -773,7 +773,7 @@
              <item row="6" column="1" rowspan="2" colspan="2">
               <layout class="QFormLayout" name="formLayout_12">
                <item row="0" column="0">
-                <widget class="QLCDNumber" name="lcdNumber_3">
+                <widget class="QLCDNumber" name="CHZ_I">
                  <property name="frameShape">
                   <enum>QFrame::NoFrame</enum>
                  </property>
@@ -783,7 +783,7 @@
                 </widget>
                </item>
                <item row="1" column="0">
-                <widget class="QLCDNumber" name="lcdNumber_4">
+                <widget class="QLCDNumber" name="CHZ_V">
                  <property name="frameShape">
                   <enum>QFrame::NoFrame</enum>
                  </property>
@@ -795,7 +795,7 @@
                <item row="0" column="1">
                 <widget class="QLabel" name="label_60">
                  <property name="text">
-                  <string>A</string>
+                  <string>mA</string>
                  </property>
                 </widget>
                </item>
@@ -1163,7 +1163,7 @@
              <item row="8" column="1" rowspan="2" colspan="2">
               <layout class="QFormLayout" name="formLayout_7">
                <item row="0" column="0">
-                <widget class="QLCDNumber" name="CHX_A">
+                <widget class="QLCDNumber" name="CHX_I">
                  <property name="frameShape">
                   <enum>QFrame::NoFrame</enum>
                  </property>
@@ -1195,7 +1195,7 @@
                   <enum>Qt::LeftToRight</enum>
                  </property>
                  <property name="text">
-                  <string>A</string>
+                  <string>mA</string>
                  </property>
                 </widget>
                </item>

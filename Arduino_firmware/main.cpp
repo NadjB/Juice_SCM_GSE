@@ -33,11 +33,11 @@ constexpr auto Enable_alim_X = 11;
 constexpr auto Enable_alim_Y = 12;
 constexpr auto Enable_alim_Z = 13;
 
-/*
-constexpr uint8_t INA_CHX = 0x40;
-constexpr uint8_t INA_CHY = 0x44;
-constexpr uint8_t INA_CHZ = 0x41;
 
+constexpr uint8_t INA_CHX = 0x40;
+constexpr uint8_t INA_CHY = 0x41;
+constexpr uint8_t INA_CHZ = 0x44;
+/*
 constexpr auto TempA           = LTC2983::Channel::CH4;
 constexpr auto TempC           = LTC2983::Channel::CH6;
 constexpr auto TempB           = LTC2983::Channel::CH8;
@@ -72,11 +72,13 @@ template<uint8_t RST_pin, uint8_t CS_pin> struct SPI_dev_t                  //Cr
   uint16_t write(const uint16_t val) const { return SPI.transfer16(val); }
 };
 
-static Ina226<500000, 50> currentMonitor{};
 using SPI_dev = SPI_dev_t<0xff, 23>;                                         //Setup SPI with CS_pin an pin 23 (PWM 10), RSt_pin as NULL
 static Ltc2983<SPI_dev> ltc2983(SPI_dev{});
 
 */
+static Ina226<500000, 50> currentMonitor{};
+
+
 
 uint16_t communicateADC(int ch)
 {
@@ -121,14 +123,14 @@ void setup()
   digitalWrite(Enable_alim_Y, LOW);
   digitalWrite(Enable_alim_Z, LOW);
 
-  /*
+
   for(auto ina : {INA_CHX, INA_CHY, INA_CHZ})
   {
     currentMonitor.setup(ina, INA226::OperatingMode::BothContinuous,
                          INA226::ConvTime::cnv_140us,
                          INA226::ConvTime::cnv_140us, INA226::AvgNum::avg_16);
   }
-
+/*
   ltc2983.setup();
 
   for(const auto ch :
@@ -153,8 +155,8 @@ void setup()
   std::cout << "VDD_CHX\t"
             << "M_CHX\t"
             << "V_BIAS_LNA_CHX\t"
-            << "RTN_CHX\t"
             << "S_CHX\t"
+            << "RTN_CHX\t"
             << "VDD_CHY\t"
             << "M_CHY\t"
             << "V_BIAS_LNA_CHY\t"
@@ -163,23 +165,29 @@ void setup()
             << "VDD_CHZ\t"
             << "M_CHZ\t"
             << "V_BIAS_LNA_CHZ\t"
-            << "RTN_CHZ\t"
             << "S_CHZ\t"
+            << "RTN_CHZ\t"
             << "ADC00_VDD_CHX\t"
             << "ADC01_M_CHX\t"
             << "ADC02_V_BIAS_LNA_CHX\t"
-            << "ADC03_RTN_CHX\t"
-            << "ADC04_S_CHX\t"
+            << "ADC03_S_CHX\t"
+            << "ADC04_RTN_CHX\t"
             << "ADC05_VDD_CHY\t"
             << "ADC06_M_CHY\t"
             << "ADC07_V_BIAS_LNA_CHY\t"
-            << "ADC08_RTN_CHY\t"
-            << "ADC09_S_CHX\t"
+            << "ADC08_S_CHY\t"
+            << "ADC09_RTN_CHY\t"
             << "ADC10_VDD_CHZ\t"
             << "ADC11_M_CHZ\t"
             << "ADC12_V_BIAS_LNA_CHZ\t"
-            << "ADC13_RTN_CHZ\t"
-            << "ADC14_S_CHX\t"
+            << "ADC13_S_CHZ\t"
+            << "ADC14_RTN_CHZ\t"
+            << "CONSO_CHX\t"
+            << "CONSO_CHY\t"
+            << "CONSO_CHZ\t"
+            << "ALIM_CHX\t"
+            << "ALIM_CHY\t"
+            << "ALIM_CHZ\t"
             << "FrameNumber" << std::endl;
 }
 
@@ -215,9 +223,9 @@ void loop()
       if(recievedString.equals("Disable alim Z")){digitalWrite(Enable_alim_X, LOW);}
   }
 
-  for(auto i : {VDD_CHX, M_CHX, V_BIAS_LNA_CHX, RTN_CHX, S_CHX,
-                VDD_CHY, M_CHY, V_BIAS_LNA_CHY, RTN_CHY, S_CHY,
-                VDD_CHZ, M_CHZ, V_BIAS_LNA_CHZ, RTN_CHZ, S_CHZ})
+  for(auto i : {VDD_CHX, M_CHX, V_BIAS_LNA_CHX, S_CHX, RTN_CHX,
+                VDD_CHY, M_CHY, V_BIAS_LNA_CHY, S_CHY, RTN_CHY,
+                VDD_CHZ, M_CHZ, V_BIAS_LNA_CHZ, S_CHZ, RTN_CHZ})
   {
     int sensorValue = analogRead(i);                                        //Checkt he corresponding pin
     std::cout << sensorValue << "\t";
@@ -234,16 +242,17 @@ void loop()
     std::cout << adcValue << "\t";
   }
 
-
-  /*
   for(auto ina : {INA_CHX, INA_CHY, INA_CHZ})
   {
     std::cout << currentMonitor.microAmps(ina) << "\t";
   }
+
   for(auto ina : {INA_CHX, INA_CHY, INA_CHZ})
   {
     std::cout << currentMonitor.milliVolts(ina) << "\t";
   }
+
+  /*
   if(measure_temp)
   {
     while(0x40 != ltc2983.status())

@@ -93,12 +93,32 @@ class VoltagesWorker(QThread):
                         ["VDD_CHX", "M_CHX", "V_BIAS_LNA_CHX", "S_CHX", "RTN_CHX",
                          "VDD_CHY", "M_CHY", "V_BIAS_LNA_CHY", "S_CHY", "RTN_CHY",
                          "VDD_CHZ", "M_CHZ", "V_BIAS_LNA_CHZ", "S_CHZ", "RTN_CHZ",
-                         #"Conso_CHX", "Alim_CHX",
                          "ADC_VDD_CHX", "ADC_M_CHX", "ADC_V_BIAS_LNA_CHX", "ADC_S_CHX", "ADC_RTN_CHX",
                          "ADC_VDD_CHY", "ADC_M_CHY", "ADC_V_BIAS_LNA_CHY", "ADC_S_CHY", "ADC_RTN_CHY",
-                         "ADC_VDD_CHZ", "ADC_M_CHZ", "ADC_V_BIAS_LNA_CHZ", "ADC_S_CHZ", "ADC_RTN_CHZ"],
+                         "ADC_VDD_CHZ", "ADC_M_CHZ", "ADC_V_BIAS_LNA_CHZ", "ADC_S_CHZ", "ADC_RTN_CHZ",
+                         "CONSO_CHX", "CONSO_CHY", "CONSO_CHZ",
+                         "ALIM_CHX", "ALIM_CHY", "ALIM_CHZ"],
                         values[1:])
                 }
+                for key, value in values.items():
+                    if "VDD" in key:
+                        if "ADC" in key:
+                            values[key] = (6.0 + 0.023) / 4096. * value
+                        else:
+                            values[key] = (6.0 + 0.023) / 1024. * value
+
+                    elif "CONSO" in key:
+                        values[key] = value / 1000.
+
+                    elif "ALIM" in key:
+                        values[key] = value / 1000.
+                    else:
+                        if "ADC" in key:
+                            values[key] = 5. / 4096. * value
+                        else:
+                            values[key] = 5. / 1024. * value
+
+                print(values)
                 self.updateVoltages.emit(values)                                                                        #MAJ Voltages
 
             except zmq.ZMQError:
@@ -293,6 +313,7 @@ class ApplicationWindow(QMainWindow):
     def asicRecording(self, values):
         if self.acknowledgedAsicID and self.asicPowered:
             self.ui.asicSN.setDisabled(True)
+            self.ui.asicsListe.setDisabled(True)
             self.ui.Launch_Measurements.setEnabled(True)
             if self.measuementRequested:
                 self.ui.Launch_Measurements.setDisabled(True)
@@ -301,41 +322,33 @@ class ApplicationWindow(QMainWindow):
                 with open(self.asicFileName, 'a') as out:
                     out.write(str(datetime.now()) + '\t')
                     for channel, value in values.items():
-                        if "ADC" in channel:
-                            if "VDD" in channel:
-                                value = (6.0 + 0.023) * value / 4096
-                            else:
-                                value = 5 * value / 4096
-                        else:
-                            if "VDD" in channel:
-                                value = (6.0 + 0.023) * value / 1024
-                            else:
-                                value = 5 * value / 1024
-
                         out.write(f"{channel}: {value}, ")
+
                     out.write('\n')
                     print("recording")
         else:
             self.ui.Launch_Measurements.setStyleSheet('')
             self.ui.Launch_Measurements.setDisabled(True)
             self.ui.asicSN.setEnabled(True)
+            self.ui.asicsListe.setEnabled(True)
 
 
     def updateVoltages(self, values):
         if self.measuementRequested:
             for ch in ["X", "Y", "Z"]:
-                self.ui.__dict__[f"CH{ch}_VDD"].display((6.0 + 0.023) / 1024. * values[f"VDD_CH{ch}"])                             #(+|- offset due au rapport de resistance
-                self.ui.__dict__[f"CH{ch}_BIAS"].display(5. / 1024. * values[f"V_BIAS_LNA_CH{ch}"])
-                self.ui.__dict__[f"CH{ch}_M"].display(5. / 1024. * values[f"M_CH{ch}"])
-                self.ui.__dict__[f"CH{ch}_RTN"].display(5. / 1024 * values[f"RTN_CH{ch}"])
-                self.ui.__dict__[f"CH{ch}_S"].display(5. / 1024 * values[f"S_CH{ch}"])
-                # self.ui.__dict__[f"CH{ch}_A"].display(5. / 1024 * values[f"Conso_CH{ch}"])
-                # self.ui.__dict__[f"CH{ch}_V"].display(5. / 1024 * values[f"Alim_CH{ch}"])
-                self.ui.__dict__[f"CH{ch}_VDD_ADC"].display((6.0 + 0.023) / 4096. * values[f"ADC_VDD_CH{ch}"])
-                self.ui.__dict__[f"CH{ch}_BIAS_ADC"].display(5. / 4096. * values[f"ADC_V_BIAS_LNA_CH{ch}"])
-                self.ui.__dict__[f"CH{ch}_M_ADC"].display(5. / 4096. * values[f"ADC_M_CH{ch}"])
-                self.ui.__dict__[f"CH{ch}_RTN_ADC"].display(5. / 4096 * values[f"ADC_RTN_CH{ch}"])
-                self.ui.__dict__[f"CH{ch}_S_ADC"].display(5. / 4096 * values[f"ADC_S_CH{ch}"])
+                self.ui.__dict__[f"CH{ch}_VDD"].display(values[f"VDD_CH{ch}"])
+                self.ui.__dict__[f"CH{ch}_BIAS"].display(values[f"V_BIAS_LNA_CH{ch}"])
+                self.ui.__dict__[f"CH{ch}_M"].display(values[f"M_CH{ch}"])
+                self.ui.__dict__[f"CH{ch}_RTN"].display(values[f"RTN_CH{ch}"])
+                self.ui.__dict__[f"CH{ch}_S"].display(values[f"S_CH{ch}"])
+                self.ui.__dict__[f"CH{ch}_I"].display(values[f"CONSO_CH{ch}"])
+                self.ui.__dict__[f"CH{ch}_V"].display(values[f"ALIM_CH{ch}"])
+                self.ui.__dict__[f"CH{ch}_VDD_ADC"].display(values[f"ADC_VDD_CH{ch}"])
+                self.ui.__dict__[f"CH{ch}_BIAS_ADC"].display(values[f"ADC_V_BIAS_LNA_CH{ch}"])
+                self.ui.__dict__[f"CH{ch}_M_ADC"].display(values[f"ADC_M_CH{ch}"])
+                self.ui.__dict__[f"CH{ch}_RTN_ADC"].display(values[f"ADC_RTN_CH{ch}"])
+                self.ui.__dict__[f"CH{ch}_S_ADC"].display(values[f"ADC_S_CH{ch}"])
+
 
     def updatePowerButton(self, powered):
         if powered:
