@@ -1,5 +1,5 @@
 import configparser, os
-from appdirs import user_config_dir
+from appdirs import user_config_dir, user_data_dir
 from juice_scm_gse.utils import mkdir
 
 _CONFIG_FNAME = str(user_config_dir(appname="Juice_SCM_EGSE", appauthor="LPP")) + "/config.ini"
@@ -28,7 +28,8 @@ class ConfigEntry:
             _config.write(f)
 
 
-global_workdir = ConfigEntry("Global", "workdir", "/tmp")
+#global_workdir = ConfigEntry("Global", "workdir", "/tmp")
+global_workdir = ConfigEntry("Global", "workdir", user_data_dir(appname="Juice_SCM_EGSE", appauthor="LPP"))
 
 
 def log_dir():

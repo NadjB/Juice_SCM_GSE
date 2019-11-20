@@ -1,8 +1,7 @@
 from setuptools import setup
 
 requirements = [
-    'PySide2',
-    'lppinstru', 'pyserial',
+    'PySide2', 'pyserial',
     'pyzmq', 'peakutils', 'numpy', 'pandas', 'appdirs', 'pint', 'psutil'
 ]
 

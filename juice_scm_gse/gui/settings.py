@@ -3,8 +3,8 @@
 # Form implementation generated from reading ui file 'designer/settings.ui',
 # licensing of 'designer/settings.ui' applies.
 #
-# Created: Thu May 16 17:27:17 2019
-#      by: pyside2-uic  running on PySide2 5.12.3
+# Created: Wed Nov 20 16:23:43 2019
+#      by: pyside2-uic  running on PySide2 5.13.1
 #
 # WARNING! All changes made in this file will be lost!
 
@@ -13,7 +13,7 @@ from PySide2 import QtCore, QtGui, QtWidgets
 class Ui_Settings(object):
     def setupUi(self, Settings):
         Settings.setObjectName("Settings")
-        Settings.resize(782, 475)
+        Settings.resize(782, 483)
         self.gridLayout = QtWidgets.QGridLayout(Settings)
         self.gridLayout.setObjectName("gridLayout")
         self.tabWidget = QtWidgets.QTabWidget(Settings)
@@ -181,7 +181,7 @@ class Ui_Settings(object):
         self.gridLayout.addWidget(self.buttonBox, 1, 0, 1, 1)
 
         self.retranslateUi(Settings)
-        self.tabWidget.setCurrentIndex(1)
+        self.tabWidget.setCurrentIndex(0)
         QtCore.QObject.connect(self.buttonBox, QtCore.SIGNAL("accepted()"), Settings.accept)
         QtCore.QObject.connect(self.buttonBox, QtCore.SIGNAL("rejected()"), Settings.reject)
         QtCore.QMetaObject.connectSlotsByName(Settings)

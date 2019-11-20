@@ -6,7 +6,7 @@ project(JUICE_SCM_EGSE_FW C CXX ASM)
 arduino_cmake_project(JUICE_SCM_EGSE_FW BOARD_NAME mega BOARD_CPU atmega2560)
 
 add_arduino_executable(JUICE_SCM_EGSE_FW main.cpp)
-set_target_upload_port(JUICE_SCM_EGSE_FW /dev/ttyACM0)
+set_target_upload_port(JUICE_SCM_EGSE_FW /dev/ttyACM1)
 
 find_arduino_library(stl ArduinoSTL 3RD_PARTY)
 link_arduino_library(JUICE_SCM_EGSE_FW stl)

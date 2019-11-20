@@ -4,6 +4,7 @@
 import sys, os
 from functools import partial
 import subprocess
+import atexit
 import zmq, json
 from datetime import datetime
 
@@ -54,7 +55,6 @@ class VoltagesWorker(QThread):
         self.sockPair.connect(f"tcp://localhost:{portPair}")
 
         self.alimsEnabled = False
-        #self.asicsList = []
 
     def asics(self, asic="XXX"):
 
@@ -81,6 +81,7 @@ class VoltagesWorker(QThread):
         del self.sock
         del self.sockPair
         del self.context
+
 
     def run(self):
         while True:
@@ -118,7 +119,6 @@ class VoltagesWorker(QThread):
                         else:
                             values[key] = 5. / 1024. * value
 
-                print(values)
                 self.updateVoltages.emit(values)                                                                        #MAJ Voltages
 
             except zmq.ZMQError:
@@ -188,6 +188,7 @@ class ArduinoStatusWorker(QThread):
 class ApplicationWindow(QMainWindow):
     """Main Window"""
     Launch_Measurements = Signal(str)
+    burninStep = "None"
 
     def __init__(self, parent=None):
         super(ApplicationWindow, self).__init__(parent)
@@ -212,6 +213,8 @@ class ApplicationWindow(QMainWindow):
 #        self.tempWorker.start()
 #        self.tempWorker.moveToThread(self.tempWorker)
 
+        self.ui.pathWorkDir.setText(f'Recording path: {cfg.global_workdir.get()}')
+
         self.arduinoStatusWorker = ArduinoStatusWorker()
         self.arduinoStatusWorker.updateStatus.connect(self.ui.statusbar.showMessage)
         self.arduinoStatusWorker.start()
@@ -227,9 +230,15 @@ class ApplicationWindow(QMainWindow):
         self.ui.asicSN.setValidator(QRegExpValidator("[0-9]{3}"))                                                       #3 Chifre
         self.ui.asicSN.returnPressed.connect(lambda: print("Declenché"))                                                #test
         self.ui.asicSN.returnPressed.connect(lambda: self.asicManagement(self.ui.asicSN.text()))
+        self.ui.asicSN.textChanged.connect(lambda: self.asicManagement(False))
+
         self.ui.Launch_Measurements.clicked.connect(self.requestMeasurement)
         self.ui.asicsListe.currentIndexChanged.connect(lambda: self.ui.asicSN.setText(self.ui.asicsListe.currentText()))
         self.ui.asicsListe.currentIndexChanged.connect(lambda: self.asicManagement(False))
+
+        self.ui.ButtonBurninStepPre.clicked.connect(lambda: self.burninStepRecorder("PreBurnIn"))
+        self.ui.ButtonBurninStepPost.clicked.connect(lambda: self.burninStepRecorder("PostBurnIn"))
+
 
 
 
@@ -298,9 +307,9 @@ class ApplicationWindow(QMainWindow):
                 self.ui.asicsListe.clear()                                                                              #Sauvage mais fonctionne
                 self.ui.asicsListe.addItems(self.asicsList[::-1])
                 self.acknowledgedAsicID = True
-                self.asicFileName = f"{self.path}/ASIC_JUICEMagic3_SN_{asicID}-{str(datetime.now())}.txt"  # create a file with the current date to dump the data
+                self.asicFileName = f"{self.path}/ASIC_JUICEMagic3_SN_{asicID}_{self.burninStep}-{str(datetime.now())}.txt"  # create a file with the current date to dump the data
                 print(self.asicFileName)
-                self.voltagesWorker.asics(asicID)
+                self.voltagesWorker.asics(f"{asicID}_{self.burninStep}")
                 self.ui.asicSN.setStyleSheet("QLineEdit {background-color: green;}")
 
 
@@ -310,6 +319,19 @@ class ApplicationWindow(QMainWindow):
     def requestMeasurement(self):
         self.measuementRequested = True
 
+    def burninStepRecorder(self, stepOfBurnin):
+        self.burninStep = stepOfBurnin
+        self.ui.asicSN.setEnabled(True)
+        self.asicManagement(False)
+        if "Pre" in stepOfBurnin:
+            self.ui.ButtonBurninStepPre.setStyleSheet('QPushButton {background-color: green;}')
+            self.ui.ButtonBurninStepPost.setStyleSheet('')
+        elif "Post" in stepOfBurnin:
+            self.ui.ButtonBurninStepPost.setStyleSheet('QPushButton {background-color: green;}')
+            self.ui.ButtonBurninStepPre.setStyleSheet('')
+
+
+
     def asicRecording(self, values):
         if self.acknowledgedAsicID and self.asicPowered:
             self.ui.asicSN.setDisabled(True)
@@ -318,7 +340,6 @@ class ApplicationWindow(QMainWindow):
             if self.measuementRequested:
                 self.ui.Launch_Measurements.setDisabled(True)
                 self.ui.Launch_Measurements.setStyleSheet('QPushButton {background-color: #69ff69;}')
-
                 with open(self.asicFileName, 'a') as out:
                     out.write(str(datetime.now()) + '\t')
                     for channel, value in values.items():
@@ -329,7 +350,8 @@ class ApplicationWindow(QMainWindow):
         else:
             self.ui.Launch_Measurements.setStyleSheet('')
             self.ui.Launch_Measurements.setDisabled(True)
-            self.ui.asicSN.setEnabled(True)
+            if self.burninStep is not "None":
+                self.ui.asicSN.setEnabled(True)
             self.ui.asicsListe.setEnabled(True)
 
 
@@ -352,7 +374,7 @@ class ApplicationWindow(QMainWindow):
 
     def updatePowerButton(self, powered):
         if powered:
-            self.ui.power_button.setText("Alive")
+            self.ui.power_button.setText("Kill")
             self.ui.power_button.setStyleSheet('QPushButton {background-color: green;}')
             self.asicPowered = True
             if self.asicsList:
@@ -361,8 +383,8 @@ class ApplicationWindow(QMainWindow):
                     self.ui.asicSN.setStyleSheet("QLineEdit {background-color: green;}")
 
         else:
-            self.ui.power_button.setText("Dead")
-            self.ui.power_button.setStyleSheet('QPushButton {background-color: #900000;}')
+            self.ui.power_button.setText("Turn On")
+            self.ui.power_button.setStyleSheet('')
             self.asicManagement(False)
             self.measuementRequested = False
             self.asicPowered = False
