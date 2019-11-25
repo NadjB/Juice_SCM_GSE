@@ -213,7 +213,7 @@ class ApplicationWindow(QMainWindow):
 #        self.tempWorker.start()
 #        self.tempWorker.moveToThread(self.tempWorker)
 
-        self.ui.pathWorkDir.setText(f'Recording path: {cfg.global_workdir.get()}')
+        self.ui.pathWorkDir.setText(cfg.global_workdir.get())
 
         self.arduinoStatusWorker = ArduinoStatusWorker()
         self.arduinoStatusWorker.updateStatus.connect(self.ui.statusbar.showMessage)
