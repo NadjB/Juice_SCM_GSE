@@ -4,7 +4,7 @@
 import sys, os
 from functools import partial
 import subprocess
-import atexit
+#import atexit
 import zmq, json
 from datetime import datetime
 
@@ -64,9 +64,12 @@ class VoltagesWorker(QThread):
 
 
 
-    def startAlims(self):
+    def startAlims(self, wantedState):
 
         if self.alimsEnabled:
+            message = f"Disable alims"
+
+        elif wantedState == "Disable":
             message = f"Disable alims"
 
         else:
@@ -270,7 +273,11 @@ class ApplicationWindow(QMainWindow):
         del self.voltagesWorker
         self.close()
 
-#    def updateTemperatures(self, tempA, tempB, tempC):
+    # def closeEvent(self, event:PySide2.QtGui.QCloseEvent):
+    #     self.voltagesWorker.startAlims("Disable")
+
+
+    #    def updateTemperatures(self, tempA, tempB, tempC):
 #        self.ui.tempA_LCD.display(tempA)
 #        self.ui.tempB_LCD.display(tempB)
 #        self.ui.tempC_LCD.display(tempC)

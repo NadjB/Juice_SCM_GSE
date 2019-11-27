@@ -3,7 +3,7 @@ import zmq
 from glob import glob
 import juice_scm_gse.config as cfg
 from  juice_scm_gse.utils import mkdir
-import atexit
+#import atexit
 from re import search
 
 
@@ -36,7 +36,9 @@ def setup_serial(socket, port_regex='/dev/ttyACM[0-1]', baudrate=2000000):      
         time.sleep(1.)
 
 
-def exit_handler(ser):
+def exit_handler():
+    socket = setup_ipc()
+    ser = setup_serial(socket)
     message = f"Disable alims"
     ser.write(message.encode())
 
@@ -49,11 +51,14 @@ def reset_and_flush(ser):
     ser.read_all()
 
 
+#atexit.register(exit_handler)
+
+
 def main():
     socket, sockPair = setup_ipc()
     ser = setup_serial(socket)
     nbrIteration = 0
-    atexit.register(exit_handler, ser)
+    #atexit.register(exit_handler)
     if ser.is_open:
         path = cfg.global_workdir.get()+"/monitor"
         mkdir(path)                                                                                                     #create a "monitor" file in the working directory
