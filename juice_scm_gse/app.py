@@ -122,6 +122,12 @@ class VoltagesWorker(QThread):
                         else:
                             values[key] = 5. / 1024. * value
 
+                for ch in ["X", "Y", "Z"]:
+                    values[f"Offset_S_CH{ch}"] = values[f"S_CH{ch}"] - values[f"M_CH{ch}"]
+                    values[f"Offset_RTN_CH{ch}"] = values[f"RTN_CH{ch}"] - values[f"M_CH{ch}"]
+                    values[f"ADC_Offset_S_CH{ch}"] = values[f"ADC_S_CH{ch}"] - values[f"ADC_M_CH{ch}"]
+                    values[f"ADC_Offset_RTN_CH{ch}"] = values[f"ADC_RTN_CH{ch}"] - values[f"ADC_M_CH{ch}"]
+
                 self.updateVoltages.emit(values)                                                                        #MAJ Voltages
 
             except zmq.ZMQError:
@@ -143,6 +149,7 @@ class ArduinoStatusWorker(QThread):
         self.sock.setsockopt(zmq.SUBSCRIBE, b"Status")
         self.arduino_process = None
         self.arduino_process_started = False
+
 
     def __del__(self):
         del self.sock
@@ -207,6 +214,8 @@ class ApplicationWindow(QMainWindow):
         self.path = cfg.global_workdir.get() + "/ASICs"
         mkdir(self.path)  # create a "monitor" file in the working directory
         self.measuementRequested = False
+        #self.showMaximized()
+        #self.showFullScreen()
 
 
 #        self.ui.power_button.clicked.connect(self.turn_on)
@@ -370,6 +379,8 @@ class ApplicationWindow(QMainWindow):
                 self.ui.__dict__[f"CH{ch}_M"].display(values[f"M_CH{ch}"])
                 self.ui.__dict__[f"CH{ch}_RTN"].display(values[f"RTN_CH{ch}"])
                 self.ui.__dict__[f"CH{ch}_S"].display(values[f"S_CH{ch}"])
+                # self.ui.__dict__[f"CH{ch}_Offset_RTN"].display(values[f"Offset_RTN_CH{ch}"])
+                # self.ui.__dict__[f"CH{ch}_Offset_S"].display(values[f"Offset_S_CH{ch}"])
                 self.ui.__dict__[f"CH{ch}_I"].display(values[f"CONSO_CH{ch}"])
                 self.ui.__dict__[f"CH{ch}_V"].display(values[f"ALIM_CH{ch}"])
                 self.ui.__dict__[f"CH{ch}_VDD_ADC"].display(values[f"ADC_VDD_CH{ch}"])
@@ -377,6 +388,8 @@ class ApplicationWindow(QMainWindow):
                 self.ui.__dict__[f"CH{ch}_M_ADC"].display(values[f"ADC_M_CH{ch}"])
                 self.ui.__dict__[f"CH{ch}_RTN_ADC"].display(values[f"ADC_RTN_CH{ch}"])
                 self.ui.__dict__[f"CH{ch}_S_ADC"].display(values[f"ADC_S_CH{ch}"])
+                # self.ui.__dict__[f"CH{ch}_Offset_RTN_ADC"].display(values[f"ADC_Offset_RTN_CH{ch}"])
+                # self.ui.__dict__[f"CH{ch}_Offset_S_ADC"].display(values[f"ADC_Offset_S_CH{ch}"])
 
 
     def updatePowerButton(self, powered):
